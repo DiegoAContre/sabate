@@ -39,19 +39,7 @@ npm run dev                   # runs both web and api concurrently
 
 ## Environment
 
-Each app has its own `.env`. Key variables:
-
-```
-DATABASE_URL=postgresql://user:pass@host:5432/sabate
-NEXTAUTH_SECRET=
-STRIPE_PUBLISHABLE_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-S3_BUCKET=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_REGION=
-```
+Each app has its own `.env`.
 
 ## Deploy to AWS
 
