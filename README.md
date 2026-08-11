@@ -12,8 +12,8 @@ E-commerce platform for a business in Sabate, Valera, Trujillo State.
 | Database    | PostgreSQL                       |
 | ORM         | Drizzle                          |
 | Auth        | NextAuth.js (Auth.js)            |
-| Payments    | PayPal                           |
-| Images      | Cloudinary                       |
+| Payments    | Stripe                           |
+| Images      | AWS S3                           |
 | Hosting     | AWS EC2 (free tier → paid tier)  |
 
 ## Architecture
@@ -44,9 +44,13 @@ Each app has its own `.env`. Key variables:
 ```
 DATABASE_URL=postgresql://user:pass@host:5432/sabate
 NEXTAUTH_SECRET=
-PAYPAL_CLIENT_ID=
-PAYPAL_SECRET_KEY=
-CLOUDINARY_URL=
+STRIPE_PUBLISHABLE_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+S3_BUCKET=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=
 ```
 
 ## Deploy to AWS
@@ -60,15 +64,15 @@ CLOUDINARY_URL=
 **Roadmap:**
 1. Launch on free tier with single EC2 instance
 2. Migrate to paid tier (larger instances, RDS scaling) as traffic grows
-3. Add CloudFront CDN, load balancer if needed
+3. Add CloudFront CDN in front of S3 and the EC2 box, load balancer if needed
 
 ## Features
 
 - Product listing with search, filter, pagination, sort
-- Shopping cart and PayPal checkout
+- Shopping cart and Stripe checkout
 - User profile management (name, password, avatar)
 - Admin panel: manage users, products, categories, permissions
-- Multiple image uploads via Cloudinary
+- Multiple image uploads via AWS S3
 
 ## License
 

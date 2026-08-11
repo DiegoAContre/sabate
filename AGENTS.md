@@ -45,9 +45,13 @@ Each app has its own `.env`:
 | `DATABASE_URL` | `packages/db`, `apps/api` |
 | `NEXTAUTH_SECRET` | `apps/web` |
 | `NEXTAUTH_URL` | `apps/web` |
-| `PAYPAL_CLIENT_ID` | `apps/api` |
-| `PAYPAL_SECRET_KEY` | `apps/api` |
-| `CLOUDINARY_URL` | `apps/api` |
+| `STRIPE_PUBLISHABLE_KEY` | `apps/web` |
+| `STRIPE_SECRET_KEY` | `apps/api` |
+| `STRIPE_WEBHOOK_SECRET` | `apps/api` |
+| `S3_BUCKET` | `apps/api` |
+| `AWS_ACCESS_KEY_ID` | `apps/api` |
+| `AWS_SECRET_ACCESS_KEY` | `apps/api` |
+| `AWS_REGION` | `apps/api` |
 
 ## Deploy
 
@@ -61,7 +65,8 @@ Both apps run on a single EC2 t2.micro behind nginx:
 ## Security
 
 - **CORS**: `cors()` must be configured to allow only the Next.js origin (production EC2 domain/IP, dev `http://localhost:3000`). Never use `*` or omit the option.
-- **Rate limiting**: `express-rate-limit` on all routes. Stricter limits on `/api/auth/*` (login, register) and PayPal callbacks — separate limiter instances with different `windowMs`/`max`.
+- **Rate limiting**: `express-rate-limit` on all routes. Stricter limits on `/api/auth/*` (login, register) and Stripe webhooks — separate limiter instances with different `windowMs`/`max`.
+- **Stripe webhooks**: Always verify signatures via `stripe.webhooks.constructEvent()` with `STRIPE_WEBHOOK_SECRET`. Never trust raw webhook payloads — the secret is the trust boundary.
 - **Helmet**: `helmet()` middleware applied globally. Sets security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, etc.).
 - **Input validation**: All request bodies and params validated with Zod schemas in `apps/api/src/validators/`. A `validate(schema)` middleware wraps every route — never trust raw `req.body`.
 - **HTTPS**: SSL terminated at nginx. Express runs behind the proxy, so `app.set('trust proxy', 1)` is required for correct IP and secure-cookie handling.
@@ -71,6 +76,6 @@ Both apps run on a single EC2 t2.micro behind nginx:
 ## Conventions
 
 - All API requests in the frontend go through a shared `apiClient` (or custom fetch wrapper) in `apps/web/lib/api.ts` — raw `fetch` to Express never inline.
-- Cloudinary uploads happen through the API (multer → Cloudinary SDK) — the frontend never talks to Cloudinary directly.
+- Image uploads happen through the API (multer → `@aws-sdk/client-s3`) — the frontend never talks to S3 directly. S3 uploads keep the same multer pattern the backend already uses.
 - Every DB query lives in `apps/api/src/services/`, not in route handlers.
 - Every new API route must have: rate-limit limiter, Zod validation middleware, and an `authMiddleware` guard if it's not a public endpoint.
