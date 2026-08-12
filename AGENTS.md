@@ -6,26 +6,48 @@ Monorepo with three workspace packages:
 
 ```
 apps/web/            Next.js 14+ (App Router) — frontend only, no API routes
-apps/api/            Express.js — all business logic lives here
+apps/api/            Express 5 — all business logic lives here
 packages/db/         Drizzle schema, migrations, shared DB client
 ```
 
 **The web app routes all data through the Express API.** Never add API routes or server actions to `apps/web`. Frontend calls `apps/api` over HTTP.
 
+### apps/api structure
+
+```
+src/
+├── index.ts              # entry: listen, graceful shutdown, signal handlers
+├── app.ts                # express factory: middleware chain → routes → 404 → errorHandler
+├── config/env.ts         # zod-validated env (fails fast on missing vars)
+├── middleware/
+│   ├── errorHandler.ts   # central error handler (ZodError, AppError, generic)
+│   ├── validate.ts       # zod validation factory for body/query/params
+│   ├── authMiddleware.ts # JWT verification + requireRole helper
+│   └── rateLimiter.ts    # generalLimiter (100/15min) + authLimiter (5/15min)
+├── routes/
+│   └── health.ts         # GET /health (public, no auth)
+└── utils/
+    └── AppError.ts       # statusCode-aware error class
+```
+
+Future directories (create when needed): `validators/`, `services/`.
+
 ## Commands
 
 ```bash
-npm install            # install all workspaces
-docker compose up db   # local PostgreSQL (use existing compose file or create one)
-npm run db:push        # push Drizzle schema to local DB (no migration files)
-npm run db:generate    # generate migration files from schema changes
-npm run db:migrate     # apply pending migrations
-npm run dev            # runs web + api concurrently (turborepo or concurrently)
-npm run lint
-npm run typecheck
+npm install               # install all workspaces
+docker compose up db      # local PostgreSQL
+npm run db:push           # push Drizzle schema to local DB (no migration files)
+npm run db:generate       # generate migration files from schema changes
+npm run db:migrate        # apply pending migrations
+npm run dev               # runs api (concurrently — add web when it exists)
+npm run dev -w apps/api   # run just the API
+npm run typecheck         # tsc --noEmit across all workspaces
 ```
 
-**Drizzle workflow**: edit schema in `packages/db/src/schema/` → `db:generate` → `db:migrate`. Never edit SQL migration files by hand.
+- **Dev server**: nodemon watches `src/**/*.ts`, executes via tsx. Type `rs` in the terminal to manually restart.
+- **Drizzle workflow**: edit schema in `packages/db/src/schema/` → `db:generate` → `db:migrate`. Never edit SQL migration files by hand.
+- **No linter yet** — typecheck only. Add ESLint when the codebase grows.
 
 ## Database
 
@@ -42,6 +64,9 @@ Each app has its own `.env`:
 
 | Var | Scope |
 |---|---|
+| `PORT` | `apps/api` (default `3001`) |
+| `JWT_SECRET` | `apps/api` (min 32 chars, zod-validated) |
+| `CORS_ORIGIN` | `apps/api` (must be valid URL, dev `http://localhost:3000`) |
 | `DATABASE_URL` | `packages/db`, `apps/api` |
 | `NEXTAUTH_SECRET` | `apps/web` |
 | `NEXTAUTH_URL` | `apps/web` |
@@ -52,6 +77,12 @@ Each app has its own `.env`:
 | `AWS_ACCESS_KEY_ID` | `apps/api` |
 | `AWS_SECRET_ACCESS_KEY` | `apps/api` |
 | `AWS_REGION` | `apps/api` |
+
+## TypeScript
+
+- `tsconfig.base.json`: `module: Node16`, `moduleResolution: Node16` — requires `.js` extensions on all relative imports (`./app.js` resolves to `app.ts`). Don't use bare `./app` — it breaks with Node16 resolution.
+- CJS output (no `"type": "module"` in package.json). tsx + node both handle it.
+- `strict: true` in base config. All packages extend it.
 
 ## Deploy
 
@@ -75,6 +106,10 @@ Both apps run on a single EC2 t2.micro behind nginx:
 
 ## Conventions
 
+- **Express 5**: async errors flow to the error handler natively — no `catchAsync` wrapper needed.
+- **Request logging**: `morgan('dev')` is wired in `app.ts`. Shows method, path, status code (color-coded), and response time in the console.
+- **Password hashing**: `bcryptjs` (pure JS) — no native build dependencies, works on t2.micro without node-gyp.
+- **Error responses**: use `AppError(message, statusCode)` from `src/utils/AppError.ts` for all operational errors. Generic errors fall through to the 500 handler.
 - All API requests in the frontend go through a shared `apiClient` (or custom fetch wrapper) in `apps/web/lib/api.ts` — raw `fetch` to Express never inline.
 - Image uploads happen through the API (multer → `@aws-sdk/client-s3`) — the frontend never talks to S3 directly. S3 uploads keep the same multer pattern the backend already uses.
 - Every DB query lives in `apps/api/src/services/`, not in route handlers.
