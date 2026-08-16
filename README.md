@@ -8,7 +8,7 @@ E-commerce platform for a business in Sabate, Valera, Trujillo State.
 | ----------- | -------------------------------- |
 | Frontend    | Next.js 14+ (App Router)         |
 | Styling     | Tailwind CSS                     |
-| Backend     | Express.js (separate API server) |
+| Backend     | Express 5 (separate API server) |
 | Database    | PostgreSQL                       |
 | ORM         | Drizzle                          |
 | Auth        | NextAuth.js (Auth.js)            |
@@ -22,7 +22,7 @@ This is a monorepo with three packages:
 
 ```
 apps/web       → Next.js frontend (App Router, Tailwind)
-apps/api       → Express.js REST API
+apps/api       → Express 5 REST API
 packages/db    → Drizzle schema, migrations, shared DB client
 ```
 
@@ -32,9 +32,10 @@ Next.js calls the Express API for all data operations — **no API routes or ser
 
 ```bash
 npm install
-docker compose up db          # local PostgreSQL
-npm run db:push               # sync Drizzle schema to local DB
-npm run dev                   # runs both web and api concurrently
+docker compose up db -d       # local PostgreSQL
+npm run db:generate           # create migration SQL from schema
+npm run db:migrate            # apply migrations to local DB
+npm run dev                   # runs api (web added later)
 ```
 
 ## Environment

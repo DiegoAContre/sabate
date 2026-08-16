@@ -30,6 +30,18 @@ src/
     └── AppError.ts       # statusCode-aware error class
 ```
 
+### packages/db structure
+
+```
+src/
+├── schema/
+│   └── index.ts        # all tables, relations, and inferred types
+├── client.ts           # pg Pool + drizzle client exported as `db`
+└── index.ts            # re-exports schema + client for `@sabate/db`
+drizzle.config.ts       # drizzle-kit config
+drizzle/                # generated migration SQL + snapshots (committed)
+```
+
 Future directories (create when needed): `validators/`, `services/`.
 
 ## Commands
@@ -40,6 +52,7 @@ docker compose up db      # local PostgreSQL
 npm run db:push           # push Drizzle schema to local DB (no migration files)
 npm run db:generate       # generate migration files from schema changes
 npm run db:migrate        # apply pending migrations
+npm run db:studio         # Drizzle Studio GUI
 npm run dev               # runs api (concurrently — add web when it exists)
 npm run dev -w apps/api   # run just the API
 npm run typecheck         # tsc --noEmit across all workspaces
@@ -53,6 +66,13 @@ npm run typecheck         # tsc --noEmit across all workspaces
 
 - PostgreSQL. Drizzle ORM. Shared client exported from `packages/db`.
 - `DATABASE_URL` env var points to `packages/db/.env`.
+- Schema conventions:
+  - UUID primary keys (`defaultRandom()`).
+  - Money stored as integer cents (`integer`), never floats.
+  - Product images stored as `json` array of S3 URLs.
+  - `cart_items` uses composite PK `(user_id, product_id)`.
+  - `orders`/`order_items` keep a snapshot of product name and price at purchase time.
+- Self-referencing relations (e.g. categories parent/subcategories) must use `relationName` in both `one()` and `many()` so Drizzle can disambiguate.
 
 ## Auth
 
@@ -83,6 +103,7 @@ Each app has its own `.env`:
 - `tsconfig.base.json`: `module: Node16`, `moduleResolution: Node16` — requires `.js` extensions on all relative imports (`./app.js` resolves to `app.ts`). Don't use bare `./app` — it breaks with Node16 resolution.
 - CJS output (no `"type": "module"` in package.json). tsx + node both handle it.
 - `strict: true` in base config. All packages extend it.
+- `packages/db` overrides `declaration`/`declarationMap` to `false` because Drizzle's inferred types (especially self-referencing relations) cannot be emitted as `.d.ts` cleanly. Consumers import types directly from the source `.ts` via `main`/`types`.
 
 ## Deploy
 
