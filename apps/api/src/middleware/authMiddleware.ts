@@ -6,6 +6,7 @@ import { AppError } from '../utils/AppError.js';
 export interface JwtPayload {
   sub: string;
   role: string;
+  email: string;
 }
 
 declare module 'express-serve-static-core' {

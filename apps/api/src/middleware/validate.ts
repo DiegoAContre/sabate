@@ -10,7 +10,14 @@ export function validate(schema: z.ZodSchema, source: Source = 'body') {
       next(parsed.error);
       return;
     }
-    (req as unknown as Record<string, unknown>)[source] = parsed.data;
+    // Express 5 makes req.query / req.params read-only, so we write validated data
+    // to a writable property for query/params while keeping body replacement.
+    if (source === 'body') {
+      (req as unknown as Record<string, unknown>).body = parsed.data;
+    } else {
+      const key = `validated${source.charAt(0).toUpperCase() + source.slice(1)}`;
+      (req as unknown as Record<string, unknown>)[key] = parsed.data;
+    }
     next();
   };
 }

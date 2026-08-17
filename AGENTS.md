@@ -25,7 +25,15 @@ src/
 │   ├── authMiddleware.ts # JWT verification + requireRole helper
 │   └── rateLimiter.ts    # generalLimiter (100/15min) + authLimiter (5/15min)
 ├── routes/
+│   ├── auth.ts           # POST /api/auth/register, /api/auth/login, GET /api/auth/me
+│   ├── catalog.ts        # public + admin category/product routes
 │   └── health.ts         # GET /health (public, no auth)
+├── services/
+│   ├── authService.ts    # register, login, JWT generation
+│   └── catalogService.ts # category/product CRUD + listing
+├── validators/
+│   ├── auth.ts           # register/login Zod schemas
+│   └── catalog.ts        # category/product/listing Zod schemas
 └── utils/
     └── AppError.ts       # statusCode-aware error class
 ```
@@ -42,7 +50,7 @@ drizzle.config.ts       # drizzle-kit config
 drizzle/                # generated migration SQL + snapshots (committed)
 ```
 
-Future directories (create when needed): `validators/`, `services/`.
+Future directories (create when needed): additional services/routes for orders, payments, and cart in later phases.
 
 ## Commands
 
@@ -53,6 +61,7 @@ npm run db:push           # push Drizzle schema to local DB (no migration files)
 npm run db:generate       # generate migration files from schema changes
 npm run db:migrate        # apply pending migrations
 npm run db:studio         # Drizzle Studio GUI
+npm run seed              # seed admin user and sample categories
 npm run dev               # runs api (concurrently — add web when it exists)
 npm run dev -w apps/api   # run just the API
 npm run typecheck         # tsc --noEmit across all workspaces
@@ -120,7 +129,7 @@ Both apps run on a single EC2 t2.micro behind nginx:
 - **Rate limiting**: `express-rate-limit` on all routes. Stricter limits on `/api/auth/*` (login, register) and Stripe webhooks — separate limiter instances with different `windowMs`/`max`.
 - **Stripe webhooks**: Always verify signatures via `stripe.webhooks.constructEvent()` with `STRIPE_WEBHOOK_SECRET`. Never trust raw webhook payloads — the secret is the trust boundary.
 - **Helmet**: `helmet()` middleware applied globally. Sets security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, etc.).
-- **Input validation**: All request bodies and params validated with Zod schemas in `apps/api/src/validators/`. A `validate(schema)` middleware wraps every route — never trust raw `req.body`.
+- **Input validation**: All request bodies and params validated with Zod schemas in `apps/api/src/validators/`. A `validate(schema, source)` middleware wraps every route. It replaces `req.body`; for `query`/`params` it stores parsed data in `req.validatedQuery` / `req.validatedParams` because Express 5 makes those properties read-only.
 - **HTTPS**: SSL terminated at nginx. Express runs behind the proxy, so `app.set('trust proxy', 1)` is required for correct IP and secure-cookie handling.
 - **SQL injection**: Drizzle's parameterized queries are safe by default. Never concatenate raw strings into SQL — use `sql` tagged template only when absolutely necessary and never with user input.
 - **Row-Level Security (RLS)**: Optional future enhancement on PostgreSQL for sensitive tables (e.g. orders scoped to user). Not required initially — handled by service-layer checks for now.
