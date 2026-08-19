@@ -12,6 +12,7 @@
 # production
 */build
 */dist
+.next
 
 */vscode
 !.vscode/extensions.json

@@ -5,7 +5,7 @@
 Monorepo with three workspace packages:
 
 ```
-apps/web/            Next.js 14+ (App Router) — frontend only, no API routes
+apps/web/            Next.js 15 (App Router) — frontend only, no API routes
 apps/api/            Express 5 — all business logic lives here
 packages/db/         Drizzle schema, migrations, shared DB client
 ```
@@ -85,7 +85,7 @@ npm run typecheck         # tsc --noEmit across all workspaces
 
 ## Auth
 
-NextAuth.js (Auth.js) handles sessions in `apps/web`. The Express API validates JWTs via middleware — any protected route in `apps/api` must use `authMiddleware`.
+NextAuth.js (Auth.js v5) handles sessions in `apps/web` via a credentials provider that calls `POST /api/auth/login` and stores the returned JWT as `session.accessToken`. The Express API validates JWTs via middleware — any protected route in `apps/api` must use `authMiddleware`. Use the `AUTH_` env prefix (v5), not `NEXTAUTH_`.
 
 ## Environment
 
@@ -97,9 +97,10 @@ Each app has its own `.env`:
 | `JWT_SECRET` | `apps/api` (min 32 chars, zod-validated) |
 | `CORS_ORIGIN` | `apps/api` (must be valid URL, dev `http://localhost:3000`) |
 | `DATABASE_URL` | `packages/db`, `apps/api` |
-| `NEXTAUTH_SECRET` | `apps/web` |
-| `NEXTAUTH_URL` | `apps/web` |
-| `STRIPE_PUBLISHABLE_KEY` | `apps/web` |
+| `AUTH_SECRET` | `apps/web` (Auth.js v5) |
+| `AUTH_URL` | `apps/web` (dev `http://localhost:3000`) |
+| `NEXT_PUBLIC_API_URL` | `apps/web` (Express base URL, dev `http://localhost:3001`) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `apps/web` |
 | `STRIPE_SECRET_KEY` | `apps/api` |
 | `STRIPE_WEBHOOK_SECRET` | `apps/api` |
 | `S3_BUCKET` | `apps/api` |
@@ -113,6 +114,7 @@ Each app has its own `.env`:
 - CJS output (no `"type": "module"` in package.json). tsx + node both handle it.
 - `strict: true` in base config. All packages extend it.
 - `packages/db` overrides `declaration`/`declarationMap` to `false` because Drizzle's inferred types (especially self-referencing relations) cannot be emitted as `.d.ts` cleanly. Consumers import types directly from the source `.ts` via `main`/`types`.
+- `apps/web` does **not** extend `tsconfig.base.json`. It uses its own Next.js config (`moduleResolution: bundler`, `jsx: preserve`, Next plugin). The Node16 `.js`-extension rule only applies to `apps/api` and `packages/db`.
 
 ## Deploy
 

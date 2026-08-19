@@ -6,7 +6,7 @@ E-commerce platform for a business in Sabate, Valera, Trujillo State.
 
 | Layer       | Technology                       |
 | ----------- | -------------------------------- |
-| Frontend    | Next.js 14+ (App Router)         |
+| Frontend    | Next.js 15 (App Router)          |
 | Styling     | Tailwind CSS                     |
 | Backend     | Express 5 (separate API server) |
 | Database    | PostgreSQL                       |
@@ -31,16 +31,36 @@ Next.js calls the Express API for all data operations — **no API routes or ser
 ## Getting Started
 
 ```bash
+# 1. Install all workspaces
 npm install
-docker compose up db -d       # local PostgreSQL
-npm run db:generate           # create migration SQL from schema
-npm run db:migrate            # apply migrations to local DB
-npm run dev                   # runs api (web added later)
+
+# 2. Start the database
+docker compose up db -d
+
+# 3. Apply migrations and seed (admin user + sample categories)
+npm run db:migrate
+npm run seed
+
+# 4. Run both apps (API :3001, web :3000)
+npm run dev
 ```
+
+Run commands:
+
+- `npm run dev` — runs API + web together
+- `npm run dev -w apps/api` — API only (port 3001)
+- `npm run dev -w apps/web` — web only (port 3000)
+- `npm run typecheck` — tsc across all workspaces
+- `npm run db:generate` / `db:migrate` / `db:push` / `db:studio` — Drizzle workflow
+- `npm run seed` — seed admin + categories
 
 ## Environment
 
-Each app has its own `.env`.
+Each app has its own env file:
+
+- `apps/api/.env` — `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `DATABASE_URL`
+- `apps/web/.env.local` — `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_API_URL`
+- `packages/db/.env` — `DATABASE_URL`
 
 ## Deploy to AWS
 
