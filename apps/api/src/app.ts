@@ -6,6 +6,7 @@ import { env } from './config/env.js';
 import { generalLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { authRouter } from './routes/auth.js';
+import { cartRouter } from './routes/cart.js';
 import { catalogRouter } from './routes/catalog.js';
 import { healthRouter } from './routes/health.js';
 
@@ -25,6 +26,7 @@ app.use(morgan('dev'));
 app.use(healthRouter);
 app.use(authRouter);
 app.use(catalogRouter);
+app.use(cartRouter);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });

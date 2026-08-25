@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import type { Product } from '@/lib/types';
 import { formatPrice } from '@/lib/format';
+import { AddToCartButton } from './add-to-cart-button';
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -28,6 +29,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         ) : null}
         {product.description ? <p className="mt-4 text-gray-700">{product.description}</p> : null}
         <p className="mt-4 text-sm text-gray-500">{product.stock} in stock</p>
+        <AddToCartButton productId={product.id} stock={product.stock} />
       </div>
     </div>
   );

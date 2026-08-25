@@ -26,13 +26,16 @@ src/
 │   └── rateLimiter.ts    # generalLimiter (100/15min) + authLimiter (5/15min)
 ├── routes/
 │   ├── auth.ts           # POST /api/auth/register, /api/auth/login, GET /api/auth/me
+│   ├── cart.ts           # GET/POST/PUT/DELETE /api/cart (protected)
 │   ├── catalog.ts        # public + admin category/product routes
 │   └── health.ts         # GET /health (public, no auth)
 ├── services/
 │   ├── authService.ts    # register, login, JWT generation
+│   ├── cartService.ts    # cart CRUD (user-scoped, stock-capped)
 │   └── catalogService.ts # category/product CRUD + listing
 ├── validators/
 │   ├── auth.ts           # register/login Zod schemas
+│   ├── cart.ts           # add/update cart Zod schemas
 │   └── catalog.ts        # category/product/listing Zod schemas
 └── utils/
     └── AppError.ts       # statusCode-aware error class
