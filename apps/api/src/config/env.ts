@@ -6,6 +6,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   CORS_ORIGIN: z.string().url(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

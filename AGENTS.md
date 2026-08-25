@@ -23,22 +23,60 @@ src/
 │   ├── errorHandler.ts   # central error handler (ZodError, AppError, generic)
 │   ├── validate.ts       # zod validation factory for body/query/params
 │   ├── authMiddleware.ts # JWT verification + requireRole helper
-│   └── rateLimiter.ts    # generalLimiter (100/15min) + authLimiter (5/15min)
+│   ├── rateLimiter.ts    # generalLimiter + authLimiter + webhookLimiter
 ├── routes/
 │   ├── auth.ts           # POST /api/auth/register, /api/auth/login, GET /api/auth/me
 │   ├── cart.ts           # GET/POST/PUT/DELETE /api/cart (protected)
 │   ├── catalog.ts        # public + admin category/product routes
-│   └── health.ts         # GET /health (public, no auth)
+│   ├── checkout.ts       # POST /api/checkout (protected)
+│   ├── health.ts         # GET /health (public, no auth)
+│   └── webhooks.ts       # POST /api/webhooks/stripe (raw body, signature-verified)
 ├── services/
 │   ├── authService.ts    # register, login, JWT generation
 │   ├── cartService.ts    # cart CRUD (user-scoped, stock-capped)
-│   └── catalogService.ts # category/product CRUD + listing
+│   ├── catalogService.ts # category/product CRUD + listing
+│   ├── checkoutService.ts # Stripe Checkout Session creation + webhook handler
+│   └── orderService.ts   # order retrieval (user-scoped)
 ├── validators/
 │   ├── auth.ts           # register/login Zod schemas
 │   ├── cart.ts           # add/update cart Zod schemas
-│   └── catalog.ts        # category/product/listing Zod schemas
+│   ├── catalog.ts        # category/product/listing Zod schemas
+│   └── checkout.ts       # shipping address Zod schema
 └── utils/
     └── AppError.ts       # statusCode-aware error class
+```
+
+### apps/web structure
+
+```
+auth.config.ts          # edge-safe Auth.js config (providers: [], authorized callback)
+auth.ts                 # full Auth.js v5 config (credentials → Express login, JWT callbacks)
+middleware.ts           # protects /cart, /account, /admin routes
+lib/
+├── api.ts              # shared apiClient (fetch → Express, Bearer token injection)
+├── format.ts           # price formatting (cents → currency)
+└── types.ts            # shared API response types (Product, Category, Paginated)
+app/
+├── layout.tsx          # root layout + SessionProvider
+├── providers.tsx       # client-side SessionProvider wrapper
+├── nav.tsx             # session-aware navbar
+├── sign-out.tsx        # client sign-out button
+├── page.tsx            # home: product grid + search/filter bar
+├── search-bar.tsx      # client search + category filter
+├── login/page.tsx      # NextAuth credentials login
+├── register/page.tsx   # register → auto sign-in
+├── products/[slug]/
+│   ├── page.tsx        # product detail
+│   └── add-to-cart-button.tsx
+├── cart/
+│   ├── page.tsx        # server: cart list + total
+│   └── cart-line.tsx   # client: qty +/- + remove
+├── checkout/
+│   ├── page.tsx        # server: order summary + shipping form
+│   ├── checkout-form.tsx # client: POST /api/checkout → redirect to Stripe
+│   ├── success/page.tsx
+│   └── cancel/page.tsx
+└── api/auth/[...nextauth]/route.ts
 ```
 
 ### packages/db structure
@@ -53,21 +91,25 @@ drizzle.config.ts       # drizzle-kit config
 drizzle/                # generated migration SQL + snapshots (committed)
 ```
 
-Future directories (create when needed): additional services/routes for orders, payments, and cart in later phases.
+Future directories (create when needed): admin UI routes/pages and S3 upload service in Phase 4d.
 
 ## Commands
 
 ```bash
 npm install               # install all workspaces
-docker compose up db      # local PostgreSQL
+docker compose up db -d   # local PostgreSQL
 npm run db:push           # push Drizzle schema to local DB (no migration files)
 npm run db:generate       # generate migration files from schema changes
 npm run db:migrate        # apply pending migrations
 npm run db:studio         # Drizzle Studio GUI
 npm run seed              # seed admin user and sample categories
-npm run dev               # runs api (concurrently — add web when it exists)
-npm run dev -w apps/api   # run just the API
+npm run dev               # runs api + web concurrently
+npm run dev -w apps/api   # run just the API (port 3001)
+npm run dev -w apps/web   # run just the web app (port 3000)
 npm run typecheck         # tsc --noEmit across all workspaces
+
+# Stripe local webhook forwarding (requires Stripe CLI):
+stripe listen --forward-to localhost:3001/api/webhooks/stripe
 ```
 
 - **Dev server**: nodemon watches `src/**/*.ts`, executes via tsx. Type `rs` in the terminal to manually restart.
@@ -104,8 +146,8 @@ Each app has its own `.env`:
 | `AUTH_URL` | `apps/web` (dev `http://localhost:3000`) |
 | `NEXT_PUBLIC_API_URL` | `apps/web` (Express base URL, dev `http://localhost:3001`) |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `apps/web` |
-| `STRIPE_SECRET_KEY` | `apps/api` |
-| `STRIPE_WEBHOOK_SECRET` | `apps/api` |
+| `STRIPE_SECRET_KEY` | `apps/api` (optional — 503 if missing) |
+| `STRIPE_WEBHOOK_SECRET` | `apps/api` (optional — 503 if missing) |
 | `S3_BUCKET` | `apps/api` |
 | `AWS_ACCESS_KEY_ID` | `apps/api` |
 | `AWS_SECRET_ACCESS_KEY` | `apps/api` |

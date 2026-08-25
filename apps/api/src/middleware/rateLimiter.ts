@@ -15,3 +15,11 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many login attempts, please try again later' },
 });
+
+export const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many webhook requests' },
+});

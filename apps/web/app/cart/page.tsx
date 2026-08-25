@@ -54,13 +54,12 @@ export default async function CartPage() {
             <span className="text-lg font-bold">{formatPrice(total)}</span>
           </div>
 
-          <button
-            type="button"
-            disabled
-            className="mt-6 w-full rounded bg-gray-300 px-6 py-3 text-sm text-white"
+          <Link
+            href="/checkout"
+            className="mt-6 block w-full rounded bg-gray-900 px-6 py-3 text-center text-sm text-white"
           >
-            Checkout (coming soon)
-          </button>
+            Checkout
+          </Link>
         </div>
       )}
     </div>

@@ -54,11 +54,26 @@ Run commands:
 - `npm run db:generate` / `db:migrate` / `db:push` / `db:studio` — Drizzle workflow
 - `npm run seed` — seed admin + categories
 
+### Stripe (local dev)
+
+Add your Stripe test keys to `apps/api/.env`:
+
+```
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+Then forward webhooks locally (requires [Stripe CLI](https://docs.stripe.com/stripe-cli)):
+
+```bash
+stripe listen --forward-to localhost:3001/api/webhooks/stripe
+```
+
 ## Environment
 
 Each app has its own env file:
 
-- `apps/api/.env` — `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `DATABASE_URL`
+- `apps/api/.env` — `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `DATABASE_URL`, `STRIPE_SECRET_KEY` (optional), `STRIPE_WEBHOOK_SECRET` (optional)
 - `apps/web/.env.local` — `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_API_URL`
 - `packages/db/.env` — `DATABASE_URL`
 
