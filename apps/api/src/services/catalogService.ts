@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, type SQL } from 'drizzle-orm';
 import { categories, db, products } from '@sabate/db';
 import { AppError } from '../utils/AppError.js';
 import type { CategoryInput, ListProductsQuery, ProductInput } from '../validators/catalog.js';
@@ -101,11 +101,17 @@ export interface PaginatedProducts {
   };
 }
 
-export async function listProducts(query: ListProductsQuery): Promise<PaginatedProducts> {
+export async function listProducts(
+  query: ListProductsQuery,
+  options: { includeInactive?: boolean } = {},
+): Promise<PaginatedProducts> {
   const { page, limit, categoryId, search, sortBy, sortOrder } = query;
   const offset = (page - 1) * limit;
 
-  const conditions = [eq(products.isActive, true)];
+  const conditions: SQL[] = [];
+  if (!options.includeInactive) {
+    conditions.push(eq(products.isActive, true));
+  }
   if (categoryId) {
     conditions.push(eq(products.categoryId, categoryId));
   }
@@ -142,6 +148,10 @@ export async function listProducts(query: ListProductsQuery): Promise<PaginatedP
       totalPages: Math.ceil(total / limit),
     },
   };
+}
+
+export async function listAdminProducts(query: ListProductsQuery): Promise<PaginatedProducts> {
+  return listProducts(query, { includeInactive: true });
 }
 
 export async function getProductBySlug(slug: string): Promise<Product> {

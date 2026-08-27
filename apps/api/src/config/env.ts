@@ -8,6 +8,10 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().url(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  S3_BUCKET: z.string().optional(),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_REGION: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

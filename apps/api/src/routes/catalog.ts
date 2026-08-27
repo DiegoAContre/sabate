@@ -11,6 +11,7 @@ import {
   type ListProductsQuery,
 } from '../validators/catalog.js';
 
+
 export const catalogRouter = Router();
 
 // Public category routes
@@ -58,6 +59,18 @@ catalogRouter.delete(
     const { id } = (req as unknown as Record<string, unknown>).validatedParams as { id: string };
     await catalog.deleteCategory(id);
     res.status(204).send();
+  },
+);
+
+catalogRouter.get(
+  '/api/admin/products',
+  authMiddleware,
+  requireRole('admin'),
+  validate(listProductsQuerySchema, 'query'),
+  async (req, res) => {
+    const query = (req as unknown as Record<string, unknown>).validatedQuery as ListProductsQuery;
+    const result = await catalog.listAdminProducts(query);
+    res.json(result);
   },
 );
 

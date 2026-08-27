@@ -69,11 +69,22 @@ Then forward webhooks locally (requires [Stripe CLI](https://docs.stripe.com/str
 stripe listen --forward-to localhost:3001/api/webhooks/stripe
 ```
 
+### S3 (admin image uploads)
+
+Fill in the S3 variables in `apps/api/.env` to enable admin product image uploads:
+
+```
+S3_BUCKET=your-bucket
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=us-east-1
+```
+
 ## Environment
 
 Each app has its own env file:
 
-- `apps/api/.env` — `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `DATABASE_URL`, `STRIPE_SECRET_KEY` (optional), `STRIPE_WEBHOOK_SECRET` (optional)
+- `apps/api/.env` — `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `DATABASE_URL`, `STRIPE_SECRET_KEY` (optional), `STRIPE_WEBHOOK_SECRET` (optional), `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
 - `apps/web/.env.local` — `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_API_URL`
 - `packages/db/.env` — `DATABASE_URL`
 
@@ -94,9 +105,16 @@ Each app has its own env file:
 
 - Product listing with search, filter, pagination, sort
 - Shopping cart and Stripe checkout
-- User profile management (name, password, avatar)
-- Admin panel: manage users, products, categories, permissions
+- Admin panel: manage products and categories
 - Multiple image uploads via AWS S3
+
+## Upcoming features
+
+- User profile management (`/account`: name, password, avatar)
+- Customer order history (`/account/orders`)
+- Admin user management (roles, active/inactive toggle)
+- Admin order management (view + update order status)
+- Inventory hardening (prevent negative stock, race-safe checkout)
 
 ## License
 

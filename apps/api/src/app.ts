@@ -10,6 +10,7 @@ import { cartRouter } from './routes/cart.js';
 import { catalogRouter } from './routes/catalog.js';
 import { checkoutRouter } from './routes/checkout.js';
 import { healthRouter } from './routes/health.js';
+import { uploadRouter } from './routes/upload.js';
 import { webhookRouter } from './routes/webhooks.js';
 
 export const app = express();
@@ -34,6 +35,7 @@ app.use(authRouter);
 app.use(catalogRouter);
 app.use(cartRouter);
 app.use(checkoutRouter);
+app.use(uploadRouter);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });

@@ -34,3 +34,23 @@ export async function apiClient<T>(path: string, options: ApiOptions = {}): Prom
 
   return data as T;
 }
+
+export async function uploadImages(files: File[], token: string): Promise<string[]> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('images', file));
+
+  const res = await fetch(`${API_URL}/api/admin/upload`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message = (data as { error?: string } | null)?.error ?? res.statusText;
+    throw new ApiError(message, res.status);
+  }
+  return (data as { urls: string[] }).urls;
+}

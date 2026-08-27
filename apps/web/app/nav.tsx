@@ -15,6 +15,11 @@ export async function Nav() {
           {session?.user ? (
             <>
               <span className="text-sm text-gray-600">{session.user.email}</span>
+              {session.user.role === 'admin' && (
+                <Link href="/admin" className="text-sm hover:underline">
+                  Admin
+                </Link>
+              )}
               <Link href="/cart" className="text-sm hover:underline">
                 Cart
               </Link>
