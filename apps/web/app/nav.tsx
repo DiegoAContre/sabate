@@ -20,6 +20,9 @@ export async function Nav() {
                   Admin
                 </Link>
               )}
+              <Link href="/account/orders" className="text-sm hover:underline">
+                Orders
+              </Link>
               <Link href="/cart" className="text-sm hover:underline">
                 Cart
               </Link>

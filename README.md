@@ -105,13 +105,13 @@ Each app has its own env file:
 
 - Product listing with search, filter, pagination, sort
 - Shopping cart and Stripe checkout
+- Customer order history (`/account/orders`)
 - Admin panel: manage products and categories
 - Multiple image uploads via AWS S3
 
 ## Upcoming features
 
 - User profile management (`/account`: name, password, avatar)
-- Customer order history (`/account/orders`)
 - Admin user management (roles, active/inactive toggle)
 - Admin order management (view + update order status)
 - Inventory hardening (prevent negative stock, race-safe checkout)

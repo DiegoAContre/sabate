@@ -30,6 +30,7 @@ src/
 │   ├── catalog.ts        # public + admin category/product routes
 │   ├── checkout.ts       # POST /api/checkout (protected)
 │   ├── health.ts         # GET /health (public, no auth)
+│   ├── orders.ts         # GET /api/orders, /api/orders/:id (protected, user-scoped)
 │   ├── upload.ts         # POST /api/admin/upload (admin, multer → S3)
 │   └── webhooks.ts       # POST /api/webhooks/stripe (raw body, signature-verified)
 ├── services/
@@ -43,7 +44,8 @@ src/
 │   ├── auth.ts           # register/login Zod schemas
 │   ├── cart.ts           # add/update cart Zod schemas
 │   ├── catalog.ts        # category/product/listing Zod schemas
-│   └── checkout.ts       # shipping address Zod schema
+│   ├── checkout.ts       # shipping address Zod schema
+│   └── orders.ts         # order param Zod schema
 └── utils/
     └── AppError.ts       # statusCode-aware error class
 ```
@@ -67,6 +69,9 @@ app/
 ├── search-bar.tsx      # client search + category filter
 ├── login/page.tsx      # NextAuth credentials login
 ├── register/page.tsx   # register → auto sign-in
+├── account/orders/
+│   ├── page.tsx        # server: list own orders
+│   └── [id]/page.tsx   # server: order detail + line items
 ├── admin/
 │   ├── layout.tsx      # role guard (admin only)
 │   ├── page.tsx        # admin dashboard links
@@ -110,11 +115,10 @@ drizzle/                # generated migration SQL + snapshots (committed)
 
 Future directories (create when needed):
 
-1. **Account/profile routes** — `/account` for name/password/avatar updates; `/account/orders` for order history.
-2. **Order API routes** — `GET /api/orders` + `GET /api/orders/:id` so the existing `orderService` is actually exposed.
-3. **Admin order management** — `app/admin/orders/` + `PATCH /api/admin/orders/:id/status`.
-4. **Admin user management** — `app/admin/users/` + `GET/PATCH /api/admin/users`.
-5. **Inventory hardening** — prevent negative stock and race conditions during checkout.
+1. **Account/profile routes** — `/account` for name/password/avatar updates.
+2. **Admin order management** — `app/admin/orders/` + `PATCH /api/admin/orders/:id/status`.
+3. **Admin user management** — `app/admin/users/` + `GET/PATCH /api/admin/users`.
+4. **Inventory hardening** — prevent negative stock and race conditions during checkout.
 
 Add ESLint and CloudFront/load-balancer scaling only when the business justifies the complexity.
 

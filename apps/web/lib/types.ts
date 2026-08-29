@@ -30,3 +30,36 @@ export interface Paginated<T> {
     totalPages: number;
   };
 }
+
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  productId: string | null;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+}
+
+export interface ShippingAddress {
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+}
+
+export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+
+export interface Order {
+  id: string;
+  userId: string;
+  status: OrderStatus;
+  subtotal: number;
+  shipping: number;
+  total: number;
+  shippingAddress: ShippingAddress;
+  stripePaymentIntentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: OrderItem[];
+}
