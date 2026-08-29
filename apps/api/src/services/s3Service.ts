@@ -16,14 +16,17 @@ function getS3Client(): S3Client {
   });
 }
 
-export async function uploadImage(file: {
-  buffer: Buffer;
-  originalname: string;
-  mimetype: string;
-}): Promise<string> {
+export async function uploadImage(
+  file: {
+    buffer: Buffer;
+    originalname: string;
+    mimetype: string;
+  },
+  folder = 'products',
+): Promise<string> {
   const client = getS3Client();
   const extension = file.originalname.split('.').pop() ?? 'jpg';
-  const key = `products/${randomUUID()}.${extension}`;
+  const key = `${folder}/${randomUUID()}.${extension}`;
 
   await client.send(
     new PutObjectCommand({

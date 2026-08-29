@@ -25,23 +25,23 @@ src/
 │   ├── authMiddleware.ts # JWT verification + requireRole helper
 │   ├── rateLimiter.ts    # generalLimiter + authLimiter + webhookLimiter
 ├── routes/
-│   ├── auth.ts           # POST /api/auth/register, /api/auth/login, GET /api/auth/me
+│   ├── auth.ts           # POST /api/auth/register, /api/auth/login, GET/PATCH /api/auth/me, POST /api/auth/change-password
 │   ├── cart.ts           # GET/POST/PUT/DELETE /api/cart (protected)
 │   ├── catalog.ts        # public + admin category/product routes
 │   ├── checkout.ts       # POST /api/checkout (protected)
 │   ├── health.ts         # GET /health (public, no auth)
 │   ├── orders.ts         # GET /api/orders, /api/orders/:id (protected, user-scoped)
-│   ├── upload.ts         # POST /api/admin/upload (admin, multer → S3)
+│   ├── upload.ts         # POST /api/admin/upload (admin), POST /api/upload/avatar (user) — multer → S3
 │   └── webhooks.ts       # POST /api/webhooks/stripe (raw body, signature-verified)
 ├── services/
-│   ├── authService.ts    # register, login, JWT generation
+│   ├── authService.ts    # register, login, JWT generation, profile update, password change
 │   ├── cartService.ts    # cart CRUD (user-scoped, stock-capped)
 │   ├── catalogService.ts # category/product CRUD + listing
 │   ├── checkoutService.ts # Stripe Checkout Session creation + webhook handler
 │   ├── orderService.ts   # order retrieval (user-scoped)
 │   └── s3Service.ts      # S3 upload helper
 ├── validators/
-│   ├── auth.ts           # register/login Zod schemas
+│   ├── auth.ts           # register/login/update-profile/change-password Zod schemas
 │   ├── cart.ts           # add/update cart Zod schemas
 │   ├── catalog.ts        # category/product/listing Zod schemas
 │   ├── checkout.ts       # shipping address Zod schema
@@ -69,9 +69,12 @@ app/
 ├── search-bar.tsx      # client search + category filter
 ├── login/page.tsx      # NextAuth credentials login
 ├── register/page.tsx   # register → auto sign-in
-├── account/orders/
-│   ├── page.tsx        # server: list own orders
-│   └── [id]/page.tsx   # server: order detail + line items
+├── account/
+│   ├── page.tsx        # server: profile (fetch /api/auth/me)
+│   ├── profile-form.tsx # client: name + avatar upload, change-password
+│   └── orders/
+│       ├── page.tsx    # server: list own orders
+│       └── [id]/page.tsx # server: order detail + line items
 ├── admin/
 │   ├── layout.tsx      # role guard (admin only)
 │   ├── page.tsx        # admin dashboard links
@@ -115,10 +118,9 @@ drizzle/                # generated migration SQL + snapshots (committed)
 
 Future directories (create when needed):
 
-1. **Account/profile routes** — `/account` for name/password/avatar updates.
-2. **Admin order management** — `app/admin/orders/` + `PATCH /api/admin/orders/:id/status`.
-3. **Admin user management** — `app/admin/users/` + `GET/PATCH /api/admin/users`.
-4. **Inventory hardening** — prevent negative stock and race conditions during checkout.
+1. **Admin order management** — `app/admin/orders/` + `PATCH /api/admin/orders/:id/status`.
+2. **Admin user management** — `app/admin/users/` + `GET/PATCH /api/admin/users`.
+3. **Inventory hardening** — prevent negative stock and race conditions during checkout.
 
 Add ESLint and CloudFront/load-balancer scaling only when the business justifies the complexity.
 

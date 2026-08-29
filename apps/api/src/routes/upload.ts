@@ -18,3 +18,18 @@ uploadRouter.post(
     res.json({ urls });
   },
 );
+
+uploadRouter.post(
+  '/api/upload/avatar',
+  authMiddleware,
+  upload.single('avatar'),
+  async (req, res) => {
+    const file = (req as { file?: Express.Multer.File }).file;
+    if (!file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+    const url = await uploadImage(file, 'avatars');
+    res.json({ url });
+  },
+);

@@ -54,3 +54,23 @@ export async function uploadImages(files: File[], token: string): Promise<string
   }
   return (data as { urls: string[] }).urls;
 }
+
+export async function uploadAvatar(file: File, token: string): Promise<string> {
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  const res = await fetch(`${API_URL}/api/upload/avatar`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message = (data as { error?: string } | null)?.error ?? res.statusText;
+    throw new ApiError(message, res.status);
+  }
+  return (data as { url: string }).url;
+}
