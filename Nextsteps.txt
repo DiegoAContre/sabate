@@ -1,4 +1,12 @@
-
+Next steps (in suggested order)
+1. Customer order history (small, completes an orphaned feature)
+Backend is 90% written. Add:
+- apps/api/src/routes/orders.ts — GET /api/orders (list own), GET /api/orders/:id (own, 404 if not owner), both authMiddleware. Mount in app.ts.
+- apps/web/app/account/orders/page.tsx — server page listing orders; app/account/orders/[id]/page.tsx — detail with line items.
+- Nav link to "Orders".
+2. User profile / account (/account)
+- API: PATCH /api/auth/me (name, avatarUrl), POST /api/auth/change-password (current + new). Reuse authService, add hashing. Optional avatar upload via existing /api/admin/upload or a user-scoped upload.
+- Web: app/account/page.tsx + a client form (reuses the apiClient pattern).
 3. Admin user management
 - API: GET /api/admin/users (list), PATCH /api/admin/users/:id (role, isActive). requireRole('admin') guard.
 - Web: app/admin/users/page.tsx with a toggle/edit UI, link in the admin layout.

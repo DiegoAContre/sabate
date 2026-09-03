@@ -63,3 +63,16 @@ export interface Order {
   updatedAt: string;
   items: OrderItem[];
 }
+
+export type Role = 'user' | 'admin';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  isActive: boolean;
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
