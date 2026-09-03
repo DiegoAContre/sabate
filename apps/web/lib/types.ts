@@ -64,6 +64,14 @@ export interface Order {
   items: OrderItem[];
 }
 
+export interface AdminOrder extends Order {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  };
+}
+
 export type Role = 'user' | 'admin';
 
 export interface User {

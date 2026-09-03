@@ -1,6 +1,18 @@
 import { eq } from 'drizzle-orm';
-import { db, orderItems, orders } from '@sabate/db';
+import { db, orders } from '@sabate/db';
 import { AppError } from '../utils/AppError.js';
+import type { UpdateOrderStatusInput } from '../validators/orders.js';
+
+const orderWithItemsAndUser = {
+  items: true,
+  user: {
+    columns: {
+      id: true,
+      email: true,
+      name: true,
+    },
+  },
+} as const;
 
 export async function getOrder(userId: string, orderId: string) {
   const order = await db.query.orders.findFirst({
@@ -21,4 +33,29 @@ export async function listOrders(userId: string) {
     with: { items: true },
     orderBy: (orders, { desc }) => [desc(orders.createdAt)],
   });
+}
+
+export async function listAllOrders() {
+  return db.query.orders.findMany({
+    with: orderWithItemsAndUser,
+    orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+  });
+}
+
+export async function updateOrderStatus(orderId: string, input: UpdateOrderStatusInput) {
+  const existing = await db.query.orders.findFirst({
+    where: eq(orders.id, orderId),
+    with: orderWithItemsAndUser,
+  });
+  if (!existing) {
+    throw new AppError('Order not found', 404);
+  }
+
+  const [order] = await db
+    .update(orders)
+    .set({ status: input.status, updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  return { ...order, items: existing.items, user: existing.user };
 }

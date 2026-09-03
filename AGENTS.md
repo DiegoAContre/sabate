@@ -30,7 +30,7 @@ src/
 │   ├── catalog.ts        # public + admin category/product routes
 │   ├── checkout.ts       # POST /api/checkout (protected)
 │   ├── health.ts         # GET /health (public, no auth)
-│   ├── orders.ts         # GET /api/orders, /api/orders/:id (protected, user-scoped)
+│   ├── orders.ts         # GET /api/orders, /api/orders/:id (user-scoped); GET /api/admin/orders, PATCH /api/admin/orders/:id/status (admin)
 │   ├── upload.ts         # POST /api/admin/upload (admin), POST /api/upload/avatar (user) — multer → S3
 │   ├── users.ts          # GET /api/admin/users, PATCH /api/admin/users/:id (admin)
 │   └── webhooks.ts       # POST /api/webhooks/stripe (raw body, signature-verified)
@@ -39,7 +39,7 @@ src/
 │   ├── cartService.ts    # cart CRUD (user-scoped, stock-capped)
 │   ├── catalogService.ts # category/product CRUD + listing
 │   ├── checkoutService.ts # Stripe Checkout Session creation + webhook handler
-│   ├── orderService.ts   # order retrieval (user-scoped)
+│   ├── orderService.ts   # order retrieval (user-scoped) + admin list + status update
 │   ├── s3Service.ts      # S3 upload helper
 │   └── userService.ts    # user list + role/isActive update (admin)
 ├── validators/
@@ -85,15 +85,18 @@ app/
 │   │   ├── page.tsx
 │   │   ├── create-form.tsx
 │   │   └── delete-button.tsx
-│   └── products/
-│       ├── page.tsx
-│       ├── new/page.tsx
-│       ├── [slug]/page.tsx
-│       ├── product-form.tsx
-│       └── delete-button.tsx
-│   └── users/
-│       ├── page.tsx      # server: user list
-│       └── user-actions.tsx # client: role select + activate/deactivate
+│   ├── products/
+│   │   ├── page.tsx
+│   │   ├── new/page.tsx
+│   │   ├── [slug]/page.tsx
+│   │   ├── product-form.tsx
+│   │   └── delete-button.tsx
+│   ├── users/
+│   │   ├── page.tsx      # server: user list
+│   │   └── user-actions.tsx # client: role select + activate/deactivate
+│   └── orders/
+│       ├── page.tsx    # server: list all orders
+│       └── order-status-select.tsx # client: status dropdown
 ├── products/[slug]/
 │   ├── page.tsx        # product detail
 │   └── add-to-cart-button.tsx
@@ -124,8 +127,7 @@ drizzle/                # generated migration SQL + snapshots (committed)
 
 Future directories (create when needed):
 
-1. **Admin order management** — `app/admin/orders/` + `PATCH /api/admin/orders/:id/status`.
-2. **Inventory hardening** — prevent negative stock and race conditions during checkout.
+1. **Inventory hardening** — prevent negative stock and race conditions during checkout.
 
 Add ESLint and CloudFront/load-balancer scaling only when the business justifies the complexity.
 
