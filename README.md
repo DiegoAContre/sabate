@@ -37,11 +37,14 @@ npm install
 # 2. Start the database
 docker compose up db -d
 
-# 3. Apply migrations and seed (admin user + sample categories)
+# 3. Copy and fill in the env files from .env.example
+#    At minimum, set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in apps/api/.env
+
+# 4. Apply migrations and seed (admin user + sample categories)
 npm run db:migrate
 npm run seed
 
-# 4. Run both apps (API :3001, web :3000)
+# 5. Run both apps (API :3001, web :3000)
 npm run dev
 ```
 
@@ -82,10 +85,10 @@ AWS_REGION=us-east-1
 
 ## Environment
 
-Each app has its own env file:
+Each app has its own env file (see `.env.example` in the repo root):
 
-- `apps/api/.env` — `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `DATABASE_URL`, `STRIPE_SECRET_KEY` (optional), `STRIPE_WEBHOOK_SECRET` (optional), `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
-- `apps/web/.env.local` — `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_API_URL`
+- `apps/api/.env` — `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `DATABASE_URL`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `STRIPE_SECRET_KEY` (optional), `STRIPE_WEBHOOK_SECRET` (optional), `S3_BUCKET` (optional), `AWS_ACCESS_KEY_ID` (optional), `AWS_SECRET_ACCESS_KEY` (optional), `AWS_REGION` (optional)
+- `apps/web/.env.local` — `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `packages/db/.env` — `DATABASE_URL`
 
 ## Deploy to AWS

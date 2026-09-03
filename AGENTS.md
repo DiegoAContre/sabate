@@ -186,6 +186,8 @@ Each app has its own `.env`:
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `apps/web` |
 | `STRIPE_SECRET_KEY` | `apps/api` (optional — 503 if missing) |
 | `STRIPE_WEBHOOK_SECRET` | `apps/api` (optional — 503 if missing) |
+| `SEED_ADMIN_EMAIL` | `apps/api` (required for `npm run seed`) |
+| `SEED_ADMIN_PASSWORD` | `apps/api` (required for `npm run seed`, min 8 chars) |
 | `S3_BUCKET` | `apps/api` |
 | `AWS_ACCESS_KEY_ID` | `apps/api` |
 | `AWS_SECRET_ACCESS_KEY` | `apps/api` |

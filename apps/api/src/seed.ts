@@ -4,9 +4,18 @@ import { eq } from 'drizzle-orm';
 import { categories, db, users } from '@sabate/db';
 
 async function seed() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@sabate.com';
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
   const adminName = process.env.SEED_ADMIN_NAME || 'Admin';
+
+  if (!adminEmail) {
+    console.error('SEED_ADMIN_EMAIL is required in apps/api/.env');
+    process.exit(1);
+  }
+  if (!adminPassword || adminPassword.length < 8) {
+    console.error('SEED_ADMIN_PASSWORD is required (min 8 characters) in apps/api/.env');
+    process.exit(1);
+  }
 
   const existingAdmin = await db.query.users.findFirst({
     where: eq(users.email, adminEmail),
