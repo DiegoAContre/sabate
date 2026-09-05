@@ -65,6 +65,7 @@ export interface Order {
 }
 
 export interface AdminOrder extends Order {
+  inventoryIssue: boolean;
   user: {
     id: string;
     email: string;

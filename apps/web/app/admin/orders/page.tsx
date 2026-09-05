@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import { apiClient } from '@/lib/api';
 import { formatPrice } from '@/lib/format';
 import type { AdminOrder } from '@/lib/types';
-import { OrderStatusSelect } from './order-status-select';
+import { ResolveIssueButton, OrderStatusSelect } from './order-status-select';
 
 export default async function AdminOrdersPage() {
   const session = await auth();
@@ -13,9 +13,18 @@ export default async function AdminOrdersPage() {
     token: session.accessToken,
   });
 
+  const issues = orders.filter((o) => o.inventoryIssue).length;
+
   return (
     <div>
       <h2 className="mb-4 text-xl font-bold">Orders</h2>
+
+      {issues > 0 ? (
+        <p className="mb-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">
+          {issues} order{issues > 1 ? 's' : ''} paid with insufficient stock — adjust the product
+          stock, then click &quot;Mark resolved&quot;.
+        </p>
+      ) : null}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -39,7 +48,17 @@ export default async function AdminOrdersPage() {
                 <td className="py-2">{o.items.length}</td>
                 <td className="py-2">{formatPrice(o.total)}</td>
                 <td className="py-2">
-                  <OrderStatusSelect orderId={o.id} status={o.status} />
+                  <div className="flex items-center gap-2">
+                    <OrderStatusSelect orderId={o.id} status={o.status} />
+                    {o.inventoryIssue ? (
+                      <>
+                        <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                          stock issue
+                        </span>
+                        <ResolveIssueButton orderId={o.id} />
+                      </>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ))}

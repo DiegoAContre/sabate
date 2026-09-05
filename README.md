@@ -111,11 +111,8 @@ Each app has its own env file (see `.env.example` in the repo root):
 - User profile management (`/account`: name, password, avatar)
 - Customer order history (`/account/orders`)
 - Admin panel: manage products, categories, users, and orders (status updates)
+- Race-safe inventory (non-negative stock enforced by DB constraint, idempotent checkout webhooks, admin notification on stock shortfalls)
 - Multiple image uploads via AWS S3
-
-## Upcoming features
-
-- Inventory hardening (prevent negative stock, race-safe checkout)
 
 ## License
 

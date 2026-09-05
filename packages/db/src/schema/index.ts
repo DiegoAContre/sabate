@@ -1,6 +1,7 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -77,6 +78,7 @@ export const products = pgTable(
   },
   (table) => ({
     categoryIdx: index('products_category_id_idx').on(table.categoryId),
+    stockNonNegative: check('products_stock_non_negative', sql`${table.stock} >= 0`),
   })
 );
 
@@ -142,6 +144,7 @@ export const orders = pgTable(
     total: integer('total').notNull(),
     shippingAddress: jsonb('shipping_address').notNull().$type<ShippingAddress>(),
     stripePaymentIntentId: text('stripe_payment_intent_id'),
+    inventoryIssue: boolean('inventory_issue').notNull().default(false),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

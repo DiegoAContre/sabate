@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import { cartItems, db, orderItems, orders, products } from '@sabate/db';
 import { env } from '../config/env.js';
 import { AppError } from '../utils/AppError.js';
@@ -21,6 +21,17 @@ export async function createCheckoutSession(
   if (items.length === 0) {
     throw new AppError('Cart is empty', 400);
   }
+
+  const short = items.filter((i) => i.quantity > i.product.stock);
+  if (short.length > 0) {
+    const msg = short
+      .map((i) => `Only ${i.product.stock} left in stock for ${i.product.name}`)
+      .join('; ');
+    throw new AppError(msg, 409);
+  }
+
+  // Validate Stripe config before creating any order rows.
+  const stripe = getStripe();
 
   const subtotal = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
   const shipping = 0;
@@ -48,8 +59,6 @@ export async function createCheckoutSession(
     })),
   );
 
-  const stripe = getStripe();
-
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: items.map((i) => ({
@@ -76,28 +85,50 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session):
     where: eq(orders.id, orderId),
     with: { items: true },
   });
-  if (!order || order.status === 'paid') return;
+  if (!order) return;
 
   const pi =
     typeof session.payment_intent === 'string' ? session.payment_intent : null;
 
-  await db
-    .update(orders)
-    .set({
-      status: 'paid',
-      stripePaymentIntentId: pi,
-      updatedAt: new Date(),
-    })
-    .where(eq(orders.id, orderId));
+  const processed = await db.transaction(async (tx) => {
+    // Atomic claim: only one webhook delivery wins the pending -> paid transition.
+    const claimed = await tx
+      .update(orders)
+      .set({ status: 'paid', stripePaymentIntentId: pi, updatedAt: new Date() })
+      .where(and(eq(orders.id, orderId), eq(orders.status, 'pending')))
+      .returning({ id: orders.id });
+    if (claimed.length === 0) return false;
 
-  for (const item of order.items) {
-    if (item.productId) {
-      await db
+    const short: string[] = [];
+    for (const item of order.items) {
+      if (!item.productId) continue;
+      const res = await tx
         .update(products)
         .set({ stock: sql`${products.stock} - ${item.quantity}` })
-        .where(eq(products.id, item.productId));
+        .where(
+          and(eq(products.id, item.productId), gte(products.stock, item.quantity)),
+        )
+        .returning({ id: products.id });
+      if (res.length === 0) {
+        short.push(item.productName);
+      }
     }
-  }
 
-  await clearCart(order.userId);
+    if (short.length > 0) {
+      // Payment already captured — flag for admin instead of refunding.
+      await tx
+        .update(orders)
+        .set({ inventoryIssue: true, updatedAt: new Date() })
+        .where(eq(orders.id, orderId));
+      console.error(
+        `[inventory] order ${orderId} paid with insufficient stock: ${short.join(', ')}`,
+      );
+    }
+
+    return true;
+  });
+
+  if (processed) {
+    await clearCart(order.userId);
+  }
 }

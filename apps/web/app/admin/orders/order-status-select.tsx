@@ -22,7 +22,7 @@ export function OrderStatusSelect({
   async function handleChange(newStatus: OrderStatus) {
     setLoading(true);
     try {
-      await apiClient(`/api/admin/orders/${orderId}/status`, {
+      await apiClient(`/api/admin/orders/${orderId}`, {
         method: 'PATCH',
         token: session?.accessToken,
         body: JSON.stringify({ status: newStatus }),
@@ -48,5 +48,37 @@ export function OrderStatusSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+export function ResolveIssueButton({ orderId }: { orderId: string }) {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const [loading, setLoading] = useState(false);
+
+  async function resolve() {
+    setLoading(true);
+    try {
+      await apiClient(`/api/admin/orders/${orderId}`, {
+        method: 'PATCH',
+        token: session?.accessToken,
+        body: JSON.stringify({ inventoryIssue: false }),
+      });
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Failed to resolve');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={resolve}
+      disabled={loading}
+      className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+    >
+      {loading ? 'Resolving...' : 'Mark resolved'}
+    </button>
   );
 }

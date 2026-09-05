@@ -30,7 +30,7 @@ src/
 │   ├── catalog.ts        # public + admin category/product routes
 │   ├── checkout.ts       # POST /api/checkout (protected)
 │   ├── health.ts         # GET /health (public, no auth)
-│   ├── orders.ts         # GET /api/orders, /api/orders/:id (user-scoped); GET /api/admin/orders, PATCH /api/admin/orders/:id/status (admin)
+│   ├── orders.ts         # GET /api/orders, /api/orders/:id (user-scoped); GET /api/admin/orders, PATCH /api/admin/orders/:id (admin)
 │   ├── upload.ts         # POST /api/admin/upload (admin), POST /api/upload/avatar (user) — multer → S3
 │   ├── users.ts          # GET /api/admin/users, PATCH /api/admin/users/:id (admin)
 │   └── webhooks.ts       # POST /api/webhooks/stripe (raw body, signature-verified)
@@ -47,7 +47,7 @@ src/
 │   ├── cart.ts           # add/update cart Zod schemas
 │   ├── catalog.ts        # category/product/listing Zod schemas
 │   ├── checkout.ts       # shipping address Zod schema
-│   ├── orders.ts         # order param Zod schema
+│   ├── orders.ts         # order param + update Zod schemas
 │   └── users.ts          # user param + update Zod schemas
 └── utils/
     └── AppError.ts       # statusCode-aware error class
@@ -125,10 +125,6 @@ drizzle/                # generated migration SQL + snapshots (committed)
 
 ## Roadmap
 
-Future directories (create when needed):
-
-1. **Inventory hardening** — prevent negative stock and race conditions during checkout.
-
 Add ESLint and CloudFront/load-balancer scaling only when the business justifies the complexity.
 
 ## Commands
@@ -165,6 +161,7 @@ stripe listen --forward-to localhost:3001/api/webhooks/stripe
   - `cart_items` uses composite PK `(user_id, product_id)`.
   - `orders`/`order_items` keep a snapshot of product name and price at purchase time.
 - Self-referencing relations (e.g. categories parent/subcategories) must use `relationName` in both `one()` and `many()` so Drizzle can disambiguate.
+- Product stock is non-negative: DB `CHECK (stock >= 0)` on `products`, and checkout webhooks decrement conditionally (`WHERE stock >= qty`) inside a transaction. Concurrent webhook deliveries are idempotent via an atomic `pending → paid` claim (`UPDATE ... WHERE status='pending'`). If stock runs out after payment, the order is flagged `inventory_issue=true` and shows a banner/badge in `/admin/orders` for manual resolution (no auto-refund).
 
 ## Auth
 

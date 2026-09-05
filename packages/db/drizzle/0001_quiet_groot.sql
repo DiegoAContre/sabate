@@ -1,0 +1,2 @@
+ALTER TABLE "orders" ADD COLUMN "inventory_issue" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "products" ADD CONSTRAINT "products_stock_non_negative" CHECK ("products"."stock" >= 0);

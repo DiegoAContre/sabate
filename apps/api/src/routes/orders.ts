@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { authMiddleware, requireRole } from '../middleware/authMiddleware.js';
 import { validate } from '../middleware/validate.js';
-import { orderParamSchema, updateOrderStatusSchema } from '../validators/orders.js';
-import { listOrders, getOrder, listAllOrders, updateOrderStatus } from '../services/orderService.js';
+import { orderParamSchema, updateOrderSchema } from '../validators/orders.js';
+import { listOrders, getOrder, listAllOrders, updateOrder } from '../services/orderService.js';
 
 export const ordersRouter = Router();
 
@@ -30,14 +30,14 @@ ordersRouter.get('/api/admin/orders', requireRole('admin'), async (_req, res) =>
 });
 
 ordersRouter.patch(
-  '/api/admin/orders/:id/status',
+  '/api/admin/orders/:id',
   requireRole('admin'),
   validate(orderParamSchema, 'params'),
-  validate(updateOrderStatusSchema),
+  validate(updateOrderSchema),
   async (req, res) => {
     const { id } = (req as unknown as Record<string, unknown>)
       .validatedParams as { id: string };
-    const order = await updateOrderStatus(id, req.body);
+    const order = await updateOrder(id, req.body);
     res.json({ order });
   },
 );

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db, orders } from '@sabate/db';
 import { AppError } from '../utils/AppError.js';
-import type { UpdateOrderStatusInput } from '../validators/orders.js';
+import type { UpdateOrderInput } from '../validators/orders.js';
 
 const orderWithItemsAndUser = {
   items: true,
@@ -42,7 +42,7 @@ export async function listAllOrders() {
   });
 }
 
-export async function updateOrderStatus(orderId: string, input: UpdateOrderStatusInput) {
+export async function updateOrder(orderId: string, input: UpdateOrderInput) {
   const existing = await db.query.orders.findFirst({
     where: eq(orders.id, orderId),
     with: orderWithItemsAndUser,
@@ -53,7 +53,11 @@ export async function updateOrderStatus(orderId: string, input: UpdateOrderStatu
 
   const [order] = await db
     .update(orders)
-    .set({ status: input.status, updatedAt: new Date() })
+    .set({
+      ...(input.status !== undefined && { status: input.status }),
+      ...(input.inventoryIssue !== undefined && { inventoryIssue: input.inventoryIssue }),
+      updatedAt: new Date(),
+    })
     .where(eq(orders.id, orderId))
     .returning();
 
