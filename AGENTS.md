@@ -125,6 +125,8 @@ drizzle/                # generated migration SQL + snapshots (committed)
 
 ## Roadmap
 
+1. **Admin UX modals + product edit fixes** — shared `<dialog>`-based `ConfirmDialog` in `apps/web/app/admin/` replacing all `confirm()`/`alert()` usage (user role change, deactivate/activate, product & category delete, category edit modal, order status change). Product edit is reachable via the per-row Edit button (`app/admin/products/[slug]`). API fixes: `productSchema` must accept `compareAtPrice: null` (zod coerce turns null into 0 → 400 on save today), and `updateProduct` must be full-replace (currently `input.X ?? existing.X` keeps old values, so description/compareAtPrice/category can't be cleared). Details in `Nextsteps.md` §2.
+
 Add ESLint and CloudFront/load-balancer scaling only when the business justifies the complexity.
 
 ## Commands

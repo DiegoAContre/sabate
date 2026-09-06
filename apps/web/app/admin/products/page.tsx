@@ -53,7 +53,15 @@ export default async function AdminProductsPage() {
                 <td className="py-2">{p.stock}</td>
                 <td className="py-2">{p.isActive ? 'Active' : 'Inactive'}</td>
                 <td className="py-2 text-right">
-                  <DeleteProductButton id={p.id} />
+                  <div className="flex justify-end gap-2">
+                    <Link
+                      href={`/admin/products/${p.slug}`}
+                      className="rounded border border-gray-300 px-2 py-1 text-sm hover:bg-gray-50"
+                    >
+                      Edit
+                    </Link>
+                    <DeleteProductButton id={p.id} />
+                  </div>
                 </td>
               </tr>
             ))}

@@ -31,7 +31,7 @@ export function DeleteProductButton({ id }: { id: string }) {
       type="button"
       onClick={handleDelete}
       disabled={loading}
-      className="text-sm text-red-600 hover:underline disabled:opacity-50"
+      className="rounded border border-red-300 px-2 py-1 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
     >
       Delete
     </button>
