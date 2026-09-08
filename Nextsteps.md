@@ -14,46 +14,48 @@ cleared, stock decremented, no inventory flag. `STRIPE_WEBHOOK_SECRET` in
 
 Issues found while testing the Stripe flow. Shared piece first:
 
-- **`apps/web/app/admin/modal.tsx`** (new) — native `<dialog>` based `Modal` +
+- DONE: **`apps/web/app/admin/modal.tsx`** — native `<dialog>` based `Modal` +
   `ConfirmDialog` (title, message, confirm/cancel, danger styling, loading state,
-  inline error text). Replaces every `confirm()`/`alert()` in the admin panel.
-  Errors render inside the modal instead of browser popups.
+  inline error text). Errors render inside the modal instead of browser popups.
 
-### Users — `admin/users/user-actions.tsx`
+### Users — `admin/users/user-actions.tsx` (pending)
 
 - Role select currently PATCHes immediately → open a confirm modal
   ("Change role of {name} from X to Y?") then PATCH `{ role }`.
 - Deactivate/Activate uses `confirm()` → danger confirm modal → PATCH `{ isActive }`.
 
-### Products
+### Products — DONE
 
 - DONE: per-row **Edit** button (bordered) next to a red-bordered **Delete** button —
   Edit goes to the existing `/admin/products/[slug]` page (prefilled `ProductForm` +
   `PUT /api/admin/products/:id`).
-- API bug: the form sends `compareAtPrice: null` when the field is empty →
-  `z.coerce.number().positive()` coerces null into 0 → **400 on every save** (also
-  affects create with an empty compare-at field). Fix `productSchema` to accept null
-  (verify with a quick tsx parse that `.nullable()` short-circuits before coercion).
-- `updateProduct` keeps old values when clearing (`input.categoryId ??
-  existing.categoryId` and the same pattern for description/compareAtPrice) → make the
-  PUT full-replace (the form always sends every field).
-- Delete uses `confirm()` → ConfirmDialog.
+- DONE (API fix): `productSchema.compareAtPrice` accepts `null`
+  (`.nullable()` short-circuits before zod coercion — verified) — the form's empty
+  compare-at field no longer 400s on save.
+- DONE (API fix): `updateProduct` is now true full-replace — description,
+  `compareAtPrice` and `categoryId` can be cleared (previously `?? existing`
+  silently kept old values). Verified by curl: clear + restore round-trip.
+- DONE: Delete uses the shared ConfirmDialog (danger) with the product name;
+  failures render inside the modal.
 
-### Categories
+### Categories (pending)
 
 - `PUT /api/admin/categories/:id` already exists — add a per-row **Edit** button that
   opens a modal (name, slug, parent select) and PUTs on save.
 - Delete uses `confirm()` → ConfirmDialog.
 
-### Orders — `admin/orders/order-status-select.tsx`
+### Orders — `admin/orders/order-status-select.tsx` (pending)
 
 - Status select PATCHes immediately → confirm modal ("Change status from X to Y?")
   then PATCH `{ status }`. Keep "Mark resolved" one-click (small, reversible).
 
 ### Verify
 
-- curl: PUT a product clearing `compareAtPrice` and `categoryId`; PUT a category rename.
-- Web: admin pages render; modal click-through is manual.
+- DONE (slice 1): typecheck; curl PUT product clearing `compareAtPrice` + `categoryId`
+  → 200 and DB nulls (restored after); `/admin/products` renders with both buttons +
+  modal markup.
+- Remaining (slice 2): PUT a category rename; admin pages render; modal click-through
+  is manual.
 - `npm run typecheck`.
 
 ## 3. Automated tests

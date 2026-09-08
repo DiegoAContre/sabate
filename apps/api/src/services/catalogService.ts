@@ -210,11 +210,11 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
     .set({
       name: input.name,
       slug: input.slug,
-      description: input.description ?? existing.description,
+      description: input.description ?? null,
       price: input.price,
-      compareAtPrice: input.compareAtPrice ?? existing.compareAtPrice,
+      compareAtPrice: input.compareAtPrice ?? null,
       stock: input.stock,
-      categoryId: input.categoryId ?? existing.categoryId,
+      categoryId: input.categoryId ?? null,
       images: input.images,
       isActive: input.isActive ?? existing.isActive,
     })

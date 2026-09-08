@@ -60,7 +60,7 @@ export default async function AdminProductsPage() {
                     >
                       Edit
                     </Link>
-                    <DeleteProductButton id={p.id} />
+                    <DeleteProductButton id={p.id} name={p.name} />
                   </div>
                 </td>
               </tr>

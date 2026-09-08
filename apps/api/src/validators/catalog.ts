@@ -21,7 +21,7 @@ export const productSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase letters, numbers, and hyphens'),
   description: z.string().optional(),
   price: z.coerce.number().int().positive('Price must be a positive integer (cents)'),
-  compareAtPrice: z.coerce.number().int().positive().optional(),
+  compareAtPrice: z.coerce.number().int().positive().nullable().optional(),
   stock: z.coerce.number().int().min(0).default(0),
   categoryId: z.string().uuid().optional().nullable(),
   images: z.array(z.string().url()).default([]),
