@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { apiClient } from '@/lib/api';
 import type { Category } from '@/lib/types';
 import { CreateCategoryForm } from './create-form';
+import { EditCategoryButton } from './edit-button';
 import { DeleteCategoryButton } from './delete-button';
 
 export default async function AdminCategoriesPage() {
@@ -37,7 +38,10 @@ export default async function AdminCategoriesPage() {
                   {categories.find((p) => p.id === c.parentCategoryId)?.name ?? '—'}
                 </td>
                 <td className="py-2 text-right">
-                  <DeleteCategoryButton id={c.id} />
+                  <div className="flex justify-end gap-2">
+                    <EditCategoryButton category={c} categories={categories} />
+                    <DeleteCategoryButton id={c.id} name={c.name} />
+                  </div>
                 </td>
               </tr>
             ))}

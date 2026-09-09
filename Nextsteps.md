@@ -18,7 +18,7 @@ Issues found while testing the Stripe flow. Shared piece first:
   `ConfirmDialog` (title, message, confirm/cancel, danger styling, loading state,
   inline error text). Errors render inside the modal instead of browser popups.
 
-### Users — `admin/users/user-actions.tsx` (pending)
+### Users — `admin/users/user-actions.tsx` (pending — the only §2 slice left)
 
 - Role select currently PATCHes immediately → open a confirm modal
   ("Change role of {name} from X to Y?") then PATCH `{ role }`.
@@ -38,24 +38,33 @@ Issues found while testing the Stripe flow. Shared piece first:
 - DONE: Delete uses the shared ConfirmDialog (danger) with the product name;
   failures render inside the modal.
 
-### Categories (pending)
+### Categories — DONE
 
-- `PUT /api/admin/categories/:id` already exists — add a per-row **Edit** button that
-  opens a modal (name, slug, parent select) and PUTs on save.
-- Delete uses `confirm()` → ConfirmDialog.
+- DONE: per-row **Edit** button → shared `Modal` with prefilled name/slug/parent
+  (parent select excludes the category itself, matching the service rule) →
+  `PUT /api/admin/categories/:id`. Verified: rename round-trip 200, self-parent 400.
+- DONE: Delete uses the shared ConfirmDialog (danger) with the category name; the
+  backend's "Cannot delete category with subcategories or products…" renders inline
+  in the modal.
+- Known limitation (backend pre-existing): only self-parenting is blocked — deeper
+  parent cycles are technically possible. Add an ancestor-chain check in
+  `updateCategory` if it ever matters.
 
-### Orders — `admin/orders/order-status-select.tsx` (pending)
+### Orders — DONE
 
-- Status select PATCHes immediately → confirm modal ("Change status from X to Y?")
-  then PATCH `{ status }`. Keep "Mark resolved" one-click (small, reversible).
+- DONE: status select opens the shared ConfirmDialog ("Change status from X to Y?") →
+  PATCH `{ status }` on confirm; Cancel/ESC reverts the dropdown (select value is
+  `confirmStatus ?? status`, fully controlled). Errors render inline in the modal.
+  Picking the current status is a no-op. "Mark resolved" stays one-click with `alert()`
+  errors (by choice).
 
 ### Verify
 
-- DONE (slice 1): typecheck; curl PUT product clearing `compareAtPrice` + `categoryId`
-  → 200 and DB nulls (restored after); `/admin/products` renders with both buttons +
-  modal markup.
-- Remaining (slice 2): PUT a category rename; admin pages render; modal click-through
-  is manual.
+- Slice 1 (products): typecheck; curl PUT clearing `compareAtPrice` + `categoryId` →
+  200 + DB nulls (restored after); `/admin/products` renders with buttons + modal.
+- Slice 2 (categories): curl rename round-trip 200/200, self-parent 400; page renders.
+- Slice 3 (orders): typecheck; `/admin/orders` renders with dialog; modal
+  click-through manual.
 - `npm run typecheck`.
 
 ## 3. Automated tests

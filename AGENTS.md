@@ -85,6 +85,7 @@ app/
 │   ├── categories/
 │   │   ├── page.tsx
 │   │   ├── create-form.tsx
+│   │   ├── edit-button.tsx # client: edit modal (name/slug/parent)
 │   │   └── delete-button.tsx
 │   ├── products/
 │   │   ├── page.tsx
@@ -126,7 +127,7 @@ drizzle/                # generated migration SQL + snapshots (committed)
 
 ## Roadmap
 
-1. **Admin UX modals (remaining screens)** — wire the existing shared `<dialog>` `ConfirmDialog` (`app/admin/modal.tsx`, already used by product delete) into: user role change + deactivate/activate, category delete + new category edit modal, order status change. Details in `Nextsteps.md` §2.
+1. **Admin UX modals (users screen)** — wire the shared `<dialog>` `ConfirmDialog` (`app/admin/modal.tsx`) into `app/admin/users/user-actions.tsx`: role-change confirm ("Change role of {name} from X to Y?") and deactivate/activate danger confirm, inline errors instead of `alert()`. Details in `Nextsteps.md` §2.
 
 Add ESLint and CloudFront/load-balancer scaling only when the business justifies the complexity.
 
