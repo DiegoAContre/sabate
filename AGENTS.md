@@ -143,6 +143,11 @@ npm run dev               # runs api + web concurrently
 npm run dev -w apps/api   # run just the API (port 3001)
 npm run dev -w apps/web   # run just the web app (port 3000)
 npm run typecheck         # tsc --noEmit across all workspaces
+npm run test              # vitest in apps/api against the `sabate_test` DB
+npm run test:db-setup     # one-time (idempotent): create `sabate_test` DB + drizzle push
+
+# Tests run against a dedicated `sabate_test` database in the same docker
+# container — never the dev DB. Vitest files run sequentially (shared DB).
 
 # Stripe local webhook forwarding (requires Stripe CLI):
 stripe listen --forward-to localhost:3001/api/webhooks/stripe

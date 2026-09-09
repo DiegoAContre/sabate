@@ -76,14 +76,26 @@ edit + delete, order status change, user role + active status.
   click-through manual.
 - `npm run typecheck`.
 
-## 3. Automated tests
+## 3. Automated tests — DONE (2026-09-09)
 
-No test framework exists; everything is verified by hand via curl.
+`vitest` in `apps/api`, 22 tests green (`npm run test`). They run against a dedicated
+`sabate_test` database (same docker container; `npm run test:db-setup` creates it and
+pushes the schema — dotenv never overrides pre-set env vars, so `tests/setup.ts`
+repoints `DATABASE_URL` cleanly). Files run strictly sequentially
+(`fileParallelism: false`) so truncations can't race.
 
-- Add `vitest` to `apps/api`, running against the local docker DB.
-- Port the inventory smoke checks into a real test file: atomic webhook claim,
-  conditional stock decrement, oversold flag, CHECK constraint, checkout 409.
-- Add basics for auth (register/login/change-password) and cart (stock-capped add/update).
+- `tests/checkout.test.ts`: webhook idempotency (atomic claim, stock decremented
+  exactly once), oversold flag (`inventory_issue=true`, stock untouched),
+  `products_stock_non_negative` CHECK (23514), checkout 409 on over-stocked cart,
+  cart-empty 400, Stripe-less 503 creates **no orphan orders**.
+- `tests/auth.test.ts`: register/duplicate 409, login ok/401/disabled, password
+  change round-trip.
+- `tests/cart.test.ts`: add/list, stock-clamped add + update, product availability
+  guards, remove 404 on repeat, clear.
+
+Scope note: services-level only — no HTTP layer (no supertest); the zod validators
+plus Express 5 error flow stay hand-verified. Tests are not in `tsc`'s `include`
+(rootDir constraint) — vitest surfaces those errors at runtime.
 
 ## 4. Deployment checklist
 
