@@ -50,38 +50,39 @@ npm run dev
 
 Run commands:
 
-- `npm run dev` — runs API + web together
-- `npm run dev -w apps/api` — API only (port 3001)
-- `npm run dev -w apps/web` — web only (port 3000)
+- `npm run dev` / `npm run dev -w apps/api` / `npm run dev -w apps/web` — run apps
 - `npm run typecheck` — tsc across all workspaces
 - `npm run db:generate` / `db:migrate` / `db:push` / `db:studio` — Drizzle workflow
 - `npm run seed` — seed admin + categories
+- `npm run test` / `npm run test:db-setup` — see Testing below
 
 ### Stripe (local dev)
 
-Add your Stripe test keys to `apps/api/.env`:
-
-```
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-```
-
-Then forward webhooks locally (requires [Stripe CLI](https://docs.stripe.com/stripe-cli)):
+Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in `apps/api/.env`, then forward
+webhooks locally (requires [Stripe CLI](https://docs.stripe.com/stripe-cli)):
 
 ```bash
 stripe listen --forward-to localhost:3001/api/webhooks/stripe
+stripe trigger checkout.session.completed   # manual webhook smoke test
 ```
 
 ### S3 (admin image uploads)
 
-Fill in the S3 variables in `apps/api/.env` to enable admin product image uploads:
+Set the optional `S3_BUCKET` + `AWS_*` vars in `apps/api/.env` to enable admin
+product image uploads.
 
+## Testing
+
+Tests run in `apps/api` (vitest) against a dedicated `sabate_test` database in the
+same docker container — dev data is never touched.
+
+```bash
+npm run test:db-setup   # one-time (idempotent): creates `sabate_test` + pushes schema
+npm run test            # checkout/webhook idempotency, auth, cart
 ```
-S3_BUCKET=your-bucket
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_REGION=us-east-1
-```
+
+The test env is network-free (Stripe keys blanked) and test files run sequentially
+because they share the database.
 
 ## Environment
 
