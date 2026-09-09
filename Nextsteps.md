@@ -18,11 +18,20 @@ Issues found while testing the Stripe flow. Shared piece first:
   `ConfirmDialog` (title, message, confirm/cancel, danger styling, loading state,
   inline error text). Errors render inside the modal instead of browser popups.
 
-### Users — `admin/users/user-actions.tsx` (pending — the only §2 slice left)
+### Users — DONE
 
-- Role select currently PATCHes immediately → open a confirm modal
-  ("Change role of {name} from X to Y?") then PATCH `{ role }`.
-- Deactivate/Activate uses `confirm()` → danger confirm modal → PATCH `{ isActive }`.
+- DONE: role select opens the shared ConfirmDialog ("Change role of {name} from
+  "x" to "y"?") → PATCH `{ role }` on confirm; Cancel reverts the dropdown
+  (`roleChange ?? user.role`, fully controlled); picking the current role is a no-op.
+- DONE: Deactivate/Activate opens a confirm modal (danger styling when deactivating,
+  with a "no longer able to sign in" warning) → PATCH `{ isActive }`.
+- Both paths render errors inline in the modal (backend self-guard 400 included).
+- Modal click-through is manual.
+
+## 2. Admin panel UX — COMPLETE
+
+All four screens wired to the shared `<dialog>` modals: product delete, category
+edit + delete, order status change, user role + active status.
 
 ### Products — DONE
 

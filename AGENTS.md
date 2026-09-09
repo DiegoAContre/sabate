@@ -127,8 +127,6 @@ drizzle/                # generated migration SQL + snapshots (committed)
 
 ## Roadmap
 
-1. **Admin UX modals (users screen)** — wire the shared `<dialog>` `ConfirmDialog` (`app/admin/modal.tsx`) into `app/admin/users/user-actions.tsx`: role-change confirm ("Change role of {name} from X to Y?") and deactivate/activate danger confirm, inline errors instead of `alert()`. Details in `Nextsteps.md` §2.
-
 Add ESLint and CloudFront/load-balancer scaling only when the business justifies the complexity.
 
 ## Commands
