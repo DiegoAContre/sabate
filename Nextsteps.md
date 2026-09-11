@@ -7,8 +7,13 @@ Verified: test payment with `4242…` card → `checkout.session.completed` deli
 cleared, stock decremented, no inventory flag. `STRIPE_WEBHOOK_SECRET` in
 `apps/api/.env` confirmed correct against the `stripe listen` session.
 
-- Remaining nicety: resend the real event once (`stripe events resend evt_…`, ids in
-  the listener log) to prove no double stock decrement, then stop `stripe listen`.
+- Idempotency proved end to end (2026-09-11): `stripe events resend evt_3UClKb…`
+  → `[200]`, order stayed `paid` (no status flip), Test Product stock stayed **9**,
+  `inventory_issue` unchanged, cart untouched — the real-world mirror of the
+  duplicate-delivery test in `tests/checkout.test.ts`. Listener stopped afterwards.
+- Note: `stripe listen` reused the same signing secret across sessions, so
+  `STRIPE_WEBHOOK_SECRET` in `apps/api/.env` stays valid. If a future session prints a
+  different `whsec_…`, update the env var and restart the API (nodemon won't reload it).
 
 ## 2. Admin panel UX (modals + product edit fixes)
 
