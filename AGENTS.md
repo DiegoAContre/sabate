@@ -7,10 +7,13 @@ Monorepo with three workspace packages:
 ```
 apps/web/            Next.js 15 (App Router) — frontend only, no API routes
 apps/api/            Express 5 — all business logic lives here
+apps/pos/            Next.js 15 — self-contained local POS (own SQLite DB)
 packages/db/         Drizzle schema, migrations, shared DB client
 ```
 
 **The web app routes all data through the Express API.** Never add API routes or server actions to `apps/web`. Frontend calls `apps/api` over HTTP.
+
+**Exception: `apps/pos` is self-contained on purpose.** It serves a physical store's register PC (Debian, browser on localhost), keeps its **own catalog and stock** (SQLite at `apps/pos/data/pos.db`, fully separate from the e-commerce Postgres DB), and uses API route handlers inside the app — the "no API routes" rule only applies to `apps/web`. UI is Spanish; roles are `owner` (todo) and `seller` (POS screen + stock-bajo only).
 
 ### apps/api structure
 
@@ -52,6 +55,23 @@ src/
 └── utils/
     └── AppError.ts       # statusCode-aware error class
 ```
+
+### apps/pos structure
+
+Self-contained POS: Next.js API route handlers + better-sqlite3 via Drizzle. No Express, no packages/db. All in `apps/pos`:
+
+```
+db/schema.ts           # users, products, sales, sale_items, stock_movements (SQLite)
+db/client.ts           # better-sqlite3 + drizzle (WAL, foreign_keys ON) — re-exports schema
+lib/token.ts           # edge-safe jose JWT sign/verify (used by middleware)
+lib/auth.ts            # getSession() via next/headers (re-exports token helpers)
+middleware.ts          # auth gate + owner-only routes (/inventario, /ventas, /usuarios)
+app/api/auth/          # login/logout route handlers (zod-validated)
+app/login/             # Spanish login screen
+scripts/seed.ts        # creates the owner user from SEED_OWNER_* env (fail-fast)
+```
+
+Conventions: money as integer cents; ids via crypto.randomUUID(); stock non-negative via SQLite CHECK; every sale/receive/adjustment writes a `stock_movements` audit row; products are deactivated, never hard-deleted (history preservation).
 
 ### apps/web structure
 
@@ -142,6 +162,9 @@ npm run seed              # seed admin user and sample categories
 npm run dev               # runs api + web concurrently
 npm run dev -w apps/api   # run just the API (port 3001)
 npm run dev -w apps/web   # run just the web app (port 3000)
+npm run dev -w apps/pos   # run the local POS (port 3002)
+npm run db:push -w apps/pos  # push POS SQLite schema (drizzle-kit, apps/pos/data/pos.db)
+npm run seed -w apps/pos   # create the POS owner from SEED_OWNER_* env
 npm run typecheck         # tsc --noEmit across all workspaces
 npm run test              # vitest in apps/api against the `sabate_test` DB
 npm run test:db-setup     # one-time (idempotent): create `sabate_test` DB + drizzle push
@@ -188,6 +211,10 @@ Each app has its own `.env`:
 | `AUTH_URL` | `apps/web` (dev `http://localhost:3000`) |
 | `NEXT_PUBLIC_API_URL` | `apps/web` (Express base URL, dev `http://localhost:3001`) |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `apps/web` |
+| `AUTH_SECRET` | `apps/pos` (JWT signing, min 32 chars) |
+| `SQLITE_PATH` | `apps/pos` (default `./data/pos.db`) |
+| `SEED_OWNER_USERNAME` | `apps/pos` (required for `npm run seed -w apps/pos`) |
+| `SEED_OWNER_PASSWORD` | `apps/pos` (required for seed, min 8 chars) |
 | `STRIPE_SECRET_KEY` | `apps/api` (optional — 503 if missing) |
 | `STRIPE_WEBHOOK_SECRET` | `apps/api` (optional — 503 if missing) |
 | `SEED_ADMIN_EMAIL` | `apps/api` (required for `npm run seed`) |

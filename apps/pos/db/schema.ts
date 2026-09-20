@@ -1,0 +1,99 @@
+import { sql } from 'drizzle-orm';
+import { check, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+
+const id = () =>
+  text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID());
+
+const createdAt = () =>
+  integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date());
+
+export const users = sqliteTable('users', {
+  id: id(),
+  username: text('username').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  name: text('name').notNull(),
+  role: text('role', { enum: ['owner', 'seller'] }).notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: createdAt(),
+});
+
+export const products = sqliteTable(
+  'products',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    sku: text('sku'),
+    // Money in integer cents — same convention as the e-commerce schema.
+    price: integer('price').notNull(),
+    stock: integer('stock').notNull().default(0),
+    lowStockThreshold: integer('low_stock_threshold').notNull().default(5),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [check('products_stock_non_negative', sql`${t.stock} >= 0`)],
+);
+
+export const sales = sqliteTable(
+  'sales',
+  {
+    id: id(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    total: integer('total').notNull(),
+    paymentMethod: text('payment_method', {
+      enum: ['efectivo', 'tarjeta', 'transferencia', 'cashea', 'otro'],
+    }).notNull(),
+    note: text('note'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('sales_created_at_idx').on(t.createdAt)],
+);
+
+export const saleItems = sqliteTable(
+  'sale_items',
+  {
+    id: id(),
+    saleId: text('sale_id')
+      .notNull()
+      .references(() => sales.id, { onDelete: 'cascade' }),
+    // Snapshot of what was actually sold; product can be deactivated later.
+    productId: text('product_id').references(() => products.id, {
+      onDelete: 'set null',
+    }),
+    productName: text('product_name').notNull(),
+    unitPrice: integer('unit_price').notNull(),
+    quantity: integer('quantity').notNull(),
+  },
+  (t) => [index('sale_items_sale_id_idx').on(t.saleId)],
+);
+
+// Audit trail: every sale, stock receive and manual adjustment writes one row.
+export const stockMovements = sqliteTable(
+  'stock_movements',
+  {
+    id: id(),
+    productId: text('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    delta: integer('delta').notNull(),
+    reason: text('reason', { enum: ['venta', 'recepcion', 'ajuste'] }).notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    saleId: text('sale_id').references(() => sales.id, { onDelete: 'set null' }),
+    note: text('note'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('stock_movements_product_id_idx').on(t.productId)],
+);
+
+export type User = typeof users.$inferSelect;
+export type Product = typeof products.$inferSelect;
+export type Sale = typeof sales.$inferSelect;
+export type SaleItem = typeof saleItems.$inferSelect;
+export type StockMovement = typeof stockMovements.$inferSelect;

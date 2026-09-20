@@ -38,3 +38,5 @@ yarn-error.log*
 
 # IA skills or config
 .agents/
+# POS local database
+apps/pos/data/

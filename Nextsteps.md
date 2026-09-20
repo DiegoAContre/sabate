@@ -1,5 +1,9 @@
 # Next steps (in suggested order)
 
+> **Priority changed (2026-09-20): the POS is the active workstream.** Sections 1–5
+> below are the (paused) e-commerce track. POS phases live in §6 and are updated as
+> each phase ships.
+
 ## 1. Stripe end-to-end pass — DONE (2026-09-06)
 
 Verified: test payment with `4242…` card → `checkout.session.completed` delivered
@@ -116,3 +120,48 @@ The app has never run in production mode.
 - Cart item-count badge in the navbar.
 - Order confirmation email (needs an email provider — real scope, plan first).
 - Admin order detail page (skipped by choice — list page covers it for now).
+
+## 6. POS local (inventario y ventas) — ACTIVE
+
+Standalone system for the store's Debian PC (`apps/pos`, browser on localhost,
+Spanish UI, own SQLite catalog/stock — separate from the e-commerce DB).
+Roles: `owner` (todo) and `seller` (POS + stock-bajo). Payment methods:
+efectivo, tarjeta, transferencia, cashea, otro. Selling more than book stock
+blocks with "Stock insuficiente" (owner adjusts via `Ajuste`).
+
+### Phase 1 — Scaffold + DB + auth — DONE (2026-09-20)
+
+- Next.js 15 + Tailwind 4 (same versions as apps/web), API route handlers,
+  better-sqlite3 v12 (Node 26 needs the v12 prebuilds; allowScripts approved) +
+  Drizzle. DB at `data/pos.db`, WAL + foreign_keys ON.
+- Schema: users, products (CHECK stock >= 0), sales, sale_items (name/price
+  snapshot), stock_movements (audit for venta/recepcion/ajuste).
+- Auth: login/logout route handlers, jose JWT in httpOnly cookie (30d),
+  `middleware.ts` gate — `/login` + `/api/auth/*` public, everything else
+  authenticated, `/inventario`, `/ventas`, `/usuarios` owner-only (stock-bajo
+  allowed for sellers).
+- Seed: owner from `SEED_OWNER_USERNAME`/`SEED_OWNER_PASSWORD` (fail-fast, min 8).
+- Verified: login wrong/right, redirects with/without session, seller blocked
+  from owner routes, logout clears session, typecheck OK.
+
+### Phase 2 — Inventory — PENDING
+
+Product CRUD (owner, deactivate instead of delete), list with stock +
+low-stock flags, receive/adjust stock (writes stock_movements), stock-bajo view.
+
+### Phase 3 — POS sale screen — PENDING
+
+Product search, ticket with quantities, payment method, `Cobrar` in a
+transaction (conditional decrement WHERE stock >= qty + movement row),
+success panel + browser-print receipt. Small vitest file for the sale
+transaction (money path).
+
+### Phase 4 — Sales history/report + users — PENDING
+
+/ventas (owner): list + totals by day and payment method, date filter.
+/usuarios: owner creates/deactivates sellers, resets passwords.
+
+### Phase 5 — Debian deployment — PENDING
+
+`npm run build && npm start` on the store PC, systemd unit, backup script
+(copy pos.db), POS README.
