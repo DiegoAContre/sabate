@@ -13,7 +13,7 @@ packages/db/         Drizzle schema, migrations, shared DB client
 
 **The web app routes all data through the Express API.** Never add API routes or server actions to `apps/web`. Frontend calls `apps/api` over HTTP.
 
-**Exception: `apps/pos` is self-contained on purpose.** It serves a physical store's register PC (Debian, browser on localhost), keeps its **own catalog and stock** (SQLite at `apps/pos/data/pos.db`, fully separate from the e-commerce Postgres DB), and uses API route handlers inside the app — the "no API routes" rule only applies to `apps/web`. UI is Spanish; roles are `owner` (todo) and `seller` (POS screen + stock-bajo only).
+**Exception: `apps/pos` is self-contained on purpose.** It runs on a headless Debian 12 server on the store LAN — staff open it in Firefox at the server's IP (port 80 in production). It keeps its **own catalog and stock** (SQLite; path from `SQLITE_PATH` — dev: `apps/pos/data/pos.db`, prod: `/var/lib/sabate-pos/pos.db`, fully separate from the e-commerce Postgres DB), and uses API route handlers inside the app — the "no API routes" rule only applies to `apps/web`. UI is Spanish; roles are `owner` (todo) and `seller` (POS screen + stock-bajo only). Production deploys ship a pre-built `output: 'standalone'` bundle (low-RAM server: no git/build on the box) — see `Nextsteps.md` §6.
 
 ### apps/api structure
 
@@ -61,17 +61,26 @@ src/
 Self-contained POS: Next.js API route handlers + better-sqlite3 via Drizzle. No Express, no packages/db. All in `apps/pos`:
 
 ```
-db/schema.ts           # users, products, sales, sale_items, stock_movements (SQLite)
+db/schema.ts           # users, products, sales, sale_items, stock_movements, exchange_rates (SQLite)
 db/client.ts           # better-sqlite3 + drizzle (WAL, foreign_keys ON) — re-exports schema
 lib/token.ts           # edge-safe jose JWT sign/verify (used by middleware)
 lib/auth.ts            # getSession() via next/headers (re-exports token helpers)
-middleware.ts          # auth gate + owner-only routes (/inventario, /ventas, /usuarios)
+lib/rate.ts            # current USD→Bs rate + 12h validity
+lib/format.ts          # USD cents → "$ 1.234,56"; Bs via rate → "Bs 91.005,00" (es-VE)
+middleware.ts          # auth gate + owner-only routes (/inventario, /ventas, /usuarios, /tasa)
 app/api/auth/          # login/logout route handlers (zod-validated)
+app/api/products/      # product CRUD + receive/adjust stock movements (owner-guarded)
+app/api/exchange-rate/ # POST the day's Bs/$ rate (owner)
+app/inventario/        # product table + modals: create/edit/stock/deactivate (owner)
+app/inventario/stock-bajo/  # low-stock view (sellers too, read-only)
+app/tasa/              # daily rate: current + history + set new (owner)
 app/login/             # Spanish login screen
 scripts/seed.ts        # creates the owner user from SEED_OWNER_* env (fail-fast)
 ```
 
-Conventions: money as integer cents; ids via crypto.randomUUID(); stock non-negative via SQLite CHECK; every sale/receive/adjustment writes a `stock_movements` audit row; products are deactivated, never hard-deleted (history preservation).
+Conventions: money as integer cents; ids via crypto.randomUUID(); stock non-negative via SQLite CHECK; every sale/receive/adjustment writes a `stock_movements` audit row; products are deactivated, never hard-deleted (history preservation). **Prices are USD cents; Bs amounts are derived via the day's exchange rate** (`exchange_rates.bs_per_usd`, integer céntimos de Bs per USD, append-only history, valid 12h from set — `lib/rate.ts`); sales snapshot the rate at sale time. Server pages read the DB directly; client mutations go through zod-validated API route handlers with owner checks in the handler (middleware guards pages by role).
+
+Drizzle + better-sqlite3 gotchas: **transactions are synchronous** — the callback must not be async; use `.all()`/`.get()`/`.run()` terminal methods (an async callback throws and can leave committed rows). **Stop the dev server before `npm run db:push -w apps/pos`** — drizzle-kit introspection wedges against a live WAL.
 
 ### apps/web structure
 
@@ -146,6 +155,8 @@ drizzle/                # generated migration SQL + snapshots (committed)
 ```
 
 ## Roadmap
+
+The POS (`apps/pos`) is the active workstream — phases and status live in `Nextsteps.md` §6 (deploy to the store's Debian server after phase 4: standalone build + rsync + systemd, port 80). The e-commerce track is paused (§4 deployment checklist and §5 polish in `Nextsteps.md`).
 
 Add ESLint and CloudFront/load-balancer scaling only when the business justifies the complexity.
 

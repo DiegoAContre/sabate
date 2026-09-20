@@ -18,15 +18,16 @@ E-commerce platform for a business in Sabate, Valera, Trujillo State.
 
 ## Architecture
 
-This is a monorepo with three packages:
+This is a monorepo with four packages:
 
 ```
 apps/web       → Next.js frontend (App Router, Tailwind)
 apps/api       → Express 5 REST API
+apps/pos       → local POS system (self-contained: SQLite, own catalog — Spanish UI)
 packages/db    → Drizzle schema, migrations, shared DB client
 ```
 
-Next.js calls the Express API for all data operations — **no API routes or server actions for business logic** in the web app.
+Next.js calls the Express API for all data operations — **no API routes or server actions for business logic** in the web app. The POS is the exception: it is fully self-contained (own SQLite DB, API route handlers inside the app) and shares nothing with the e-commerce stack.
 
 ## Getting Started
 

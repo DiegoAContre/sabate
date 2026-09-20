@@ -39,6 +39,12 @@ export function Nav({ session }: { session: Session }) {
               >
                 Usuarios
               </Link>
+              <Link
+                href="/tasa"
+                className="text-gray-600 hover:text-gray-900"
+              >
+                Tasa
+              </Link>
             </>
           )}
         </nav>

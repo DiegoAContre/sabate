@@ -123,11 +123,14 @@ The app has never run in production mode.
 
 ## 6. POS local (inventario y ventas) — ACTIVE
 
-Standalone system for the store's Debian PC (`apps/pos`, browser on localhost,
-Spanish UI, own SQLite catalog/stock — separate from the e-commerce DB).
-Roles: `owner` (todo) and `seller` (POS + stock-bajo). Payment methods:
-efectivo, tarjeta, transferencia, cashea, otro. Selling more than book stock
-blocks with "Stock insuficiente" (owner adjusts via `Ajuste`).
+Standalone system for the store, **two-PC model**: a headless Debian 12 server
+(low RAM) runs the app; staff use Firefox from client machines at
+`http://<server-ip>`. `apps/pos`, Spanish UI, own SQLite catalog/stock —
+separate from the e-commerce DB. Roles: `owner` (todo) and `seller`
+(POS + stock-bajo). Payment methods: efectivo, tarjeta, transferencia, cashea,
+otro. Selling more than book stock blocks with "Stock insuficiente" (owner
+adjusts via `Ajuste`). **Deploy after phase 4** (features churn until then;
+redeploy = one script once systemd exists).
 
 ### Phase 1 — Scaffold + DB + auth — DONE (2026-09-20)
 
@@ -144,16 +147,42 @@ blocks with "Stock insuficiente" (owner adjusts via `Ajuste`).
 - Verified: login wrong/right, redirects with/without session, seller blocked
   from owner routes, logout clears session, typecheck OK.
 
-### Phase 2 — Inventory — PENDING
+### Phase 2 — Inventory + daily rate — DONE (2026-09-20)
 
-Product CRUD (owner, deactivate instead of delete), list with stock +
-low-stock flags, receive/adjust stock (writes stock_movements), stock-bajo view.
+- **Schema**: new `exchange_rates` (append-only, `bs_per_usd` integer céntimos de
+  Bs per USD, who set it) + `sales.exchange_rate` snapshot column (added now so
+  phase 3 needs no migration). SQLite can't ALTER ADD a NOT NULL column — the
+  empty sales tables were dropped and recreated; drizzle-kit introspection wedged
+  against the live dev server/WAL afterwards → **stop the dev server before
+  `db:push -w apps/pos`** (documented in AGENTS.md).
+- **Rate model** (client decision): prices are USD; Bs is derived from the day's
+  rate; a rate is **valid 12 hours** from when it was set (`lib/rate.ts`) — the
+  POS will refuse to sell on a stale/missing rate. `/tasa` (owner): current rate +
+  validity badge + history; `POST /api/exchange-rate` appends.
+- **Inventory** (`/inventario`, owner): table with $ and Bs columns (Bs at current
+  rate), stock red when ≤ threshold; modals — Nuevo producto (initial stock writes
+  a `recepcion` movement), Editar, **Stock** (Recepción = +N / Ajuste = set
+  counted total, delta auto-computed), Desactivar/Activar confirm. Products are
+  deactivated, never deleted. Shared `app/modal.tsx` (native `<dialog>`, ESC-safe).
+- **Stock bajo** (`/inventario/stock-bajo`, sellers too): active products at/below
+  threshold, read-only.
+- **Gotcha found**: drizzle better-sqlite3 transactions are synchronous — async
+  callbacks throw "cannot return a promise" AND can leave committed rows (a
+  phantom product survived a rolled-back-looking 500). All handlers use
+  `.all()`/`.get()`/`.run()` sync patterns now; documented in AGENTS.md.
+- **Verified**: typecheck; curl — create (201 + movement), recepción +3, ajuste
+  set-7 (delta -6 recorded), PATCH price/deactivate, seller 403 on all mutations,
+  GET allowed; movements cascade; rate POST (9.100,50 → 910050); pages render
+  (inventario empty state, tasa "Válida" badge, stock-bajo for seller); seller
+  redirected from /inventario and /tasa.
 
 ### Phase 3 — POS sale screen — PENDING
 
 Product search, ticket with quantities, payment method, `Cobrar` in a
 transaction (conditional decrement WHERE stock >= qty + movement row),
-success panel + browser-print receipt. Small vitest file for the sale
+success panel + browser-print receipt. **The sale requires a valid (non-expired)
+rate and snapshots it** (`sales.exchange_rate`); receipt shows $ and Bs.
+Current rate displayed on the POS screen. Small vitest file for the sale
 transaction (money path).
 
 ### Phase 4 — Sales history/report + users — PENDING
@@ -161,7 +190,27 @@ transaction (money path).
 /ventas (owner): list + totals by day and payment method, date filter.
 /usuarios: owner creates/deactivates sellers, resets passwords.
 
-### Phase 5 — Debian deployment — PENDING
+### Phase 5 — Debian deployment (two-PC model) — PENDING, after phase 4
 
-`npm run build && npm start` on the store PC, systemd unit, backup script
-(copy pos.db), POS README.
+Server: headless Debian 12, **low RAM** → no git/build on the box; we ship a
+pre-built bundle. Clients: Firefox at the server IP.
+
+- `output: 'standalone'` in `apps/pos/next.config.ts`; build on the dev machine
+  produces `.next/standalone/` (`server.js` + pruned node_modules incl. the
+  compiled `better_sqlite3.node` — verify server arch is x64 at install time).
+- `apps/pos/scripts/deploy.sh`: build here → rsync standalone + `.next/static` →
+  `server:/opt/sabate-pos/app/` → `ssh systemctl restart sabate-pos`.
+- systemd unit (file in repo + install steps): `PORT=80`, `HOSTNAME=0.0.0.0`,
+  `AmbientCapabilities=CAP_NET_BIND_SERVICE` (bare-IP URL), `Restart=always`,
+  dedicated `pos` user; `AUTH_SECRET`/`SQLITE_PATH` via unit env.
+- DB lives outside the app dir (`/var/lib/sabate-pos/pos.db` via `SQLITE_PATH`)
+  so deploys never clobber data; seed runs once over SSH (exact command in README).
+- Server bootstrap (one-time, README): Node 22 via NodeSource (Debian 12's stock
+  Node 18 is too old), firewall = app port to LAN subnet only + SSH, timezone
+  `America/Caracas` (so daily sales match the store day), static IP / DHCP
+  reservation.
+- Backups: daily cron `sqlite3 pos.db ".backup …"` (WAL-safe; needs the `sqlite3`
+  package on the server), 30-day retention, restore procedure documented.
+- Accepted risk: plain HTTP on the store LAN (no TLS without a domain) — the
+  session cookie is sniffable on-LAN. Fine for a small store; revisit only if
+  it ever matters.

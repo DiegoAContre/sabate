@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE, verifyToken } from '@/lib/token';
 
 // Sellers can sell and watch stock levels; everything else is owner-only.
-const OWNER_ONLY = ['/inventario', '/ventas', '/usuarios'];
+const OWNER_ONLY = ['/inventario', '/ventas', '/usuarios', '/tasa'];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

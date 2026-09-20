@@ -48,6 +48,9 @@ export const sales = sqliteTable(
     paymentMethod: text('payment_method', {
       enum: ['efectivo', 'tarjeta', 'transferencia', 'cashea', 'otro'],
     }).notNull(),
+    // Snapshot of the day's exchange rate (bs_per_usd, integer céntimos de Bs)
+    // at the moment of sale — receipts and reports compute Bs exactly.
+    exchangeRate: integer('exchange_rate').notNull(),
     note: text('note'),
     createdAt: createdAt(),
   },
@@ -92,8 +95,25 @@ export const stockMovements = sqliteTable(
   (t) => [index('stock_movements_product_id_idx').on(t.productId)],
 );
 
+// Daily USD→Bs rate, append-only history. Current rate = latest row.
+// bsPerUsd stored as integer céntimos de Bs per 1 USD (9100.50 Bs → 910050).
+// A rate is valid for 12 hours from when it was set (lib/rate.ts enforces).
+export const exchangeRates = sqliteTable(
+  'exchange_rates',
+  {
+    id: id(),
+    bsPerUsd: integer('bs_per_usd').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index('exchange_rates_created_at_idx').on(t.createdAt)],
+);
+
 export type User = typeof users.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Sale = typeof sales.$inferSelect;
 export type SaleItem = typeof saleItems.$inferSelect;
 export type StockMovement = typeof stockMovements.$inferSelect;
+export type ExchangeRate = typeof exchangeRates.$inferSelect;
