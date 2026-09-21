@@ -1,17 +1,29 @@
-import { getSession } from '@/lib/auth';
+import { asc, eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
+import { db, products } from '@/db/client';
+import { getSession } from '@/lib/auth';
+import { getCurrentRate } from '@/lib/rate';
+import { PosScreen } from './pos-screen';
 
-// Placeholder home — becomes the POS sale screen in phase 3.
 export default async function HomePage() {
   const session = await getSession();
   if (!session) redirect('/login');
 
+  const [catalog, rate] = await Promise.all([
+    db
+      .select()
+      .from(products)
+      .where(eq(products.isActive, true))
+      .orderBy(asc(products.name)),
+    getCurrentRate(),
+  ]);
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Punto de venta</h1>
-      <p className="mt-2 text-gray-600">
-        Hola, {session.name}. La pantalla de venta llegará en la fase 3.
-      </p>
-    </div>
+    <PosScreen
+      products={catalog}
+      rate={rate}
+      isOwner={session.role === 'owner'}
+      sellerName={session.name}
+    />
   );
 }

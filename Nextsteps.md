@@ -176,18 +176,39 @@ redeploy = one script once systemd exists).
   (inventario empty state, tasa "Válida" badge, stock-bajo for seller); seller
   redirected from /inventario and /tasa.
 
-### Phase 3 — POS sale screen — PENDING
+### Phase 3 — POS sale screen — DONE (2026-09-21)
 
-Product search, ticket with quantities, payment method, `Cobrar` in a
-transaction (conditional decrement WHERE stock >= qty + movement row),
-success panel + browser-print receipt. **The sale requires a valid (non-expired)
-rate and snapshots it** (`sales.exchange_rate`); receipt shows $ and Bs.
-Current rate displayed on the POS screen. Small vitest file for the sale
-transaction (money path).
+- **Screen** (`/`, owner and seller): search by name/SKU, product grid (click
+  adds; disabled at "Sin stock"), ticket with qty −/+ y quitar, total in **$ y
+  Bs**, método de pago (efectivo/tarjeta/transferencia/cashea/otro) y `Cobrar`.
+  Success panel shows the receipt (browser print via `window.print()`, print CSS
+  hides nav/buttons) + «Nueva venta»; `router.refresh()` reloads stock levels.
+- **Sale API** `POST /api/sales` (any logged-in role): zod-validated; prices and
+  the total are computed **inside** the DB transaction from catalog prices; the
+  rate is re-checked server-side; conditional decrement
+  (`WHERE stock >= qty`) + one `stock_movements` row per line (`venta`).
+- **Rules enforced**: no sale without a valid (non-expired) rate → 409 (POS
+  banner: owner gets «Actualizar tasa», seller sees «Avisa al propietario»); a
+  line without stock refuses the whole ticket (409, no partial writes);
+  inactive product → 409.
+- **Tests**: `apps/pos/tests/sale.test.ts` (vitest, `data/pos-test.db`) covers
+  total-from-DB-prices + rate snapshot + stock decrement + movements, refusal
+  with rollback (nothing written), expired rate, no rate, and Bs conversion.
+- **Verified**: 5 pos + 22 api tests, typecheck clean; curl — happy sale (total
+  computed from DB, rate snapshot) with stock decremented + `venta` movements,
+  oversell 409 with zero partial writes, seller sale 201, no-cookie 401, bad
+  payload 400, inactive product 409; renders for both roles incl. stale-rate
+  banner. **Manual check left**: Firefox print preview of the ticket.
+
+Decisions (client): payment method only (no vuelto); no barcode/scanner (plain
+search + click); minimal receipt (name, date, seller, lines, $ + Bs, rate,
+method, short id — no RIF/correlativo); voiding a sale → phase 4.
 
 ### Phase 4 — Sales history/report + users — PENDING
 
-/ventas (owner): list + totals by day and payment method, date filter.
+/ventas (owner): list + totals by day and payment method, date filter; detail
+with **«Anular venta»** (owner only: restocks + compensating movement) and
+**reimprimir recibo** (reuses `app/receipt.tsx`).
 /usuarios: owner creates/deactivates sellers, resets passwords.
 
 ### Phase 5 — Debian deployment (two-PC model) — PENDING, after phase 4

@@ -67,10 +67,15 @@ lib/token.ts           # edge-safe jose JWT sign/verify (used by middleware)
 lib/auth.ts            # getSession() via next/headers (re-exports token helpers)
 lib/rate.ts            # current USD→Bs rate + 12h validity
 lib/format.ts          # USD cents → "$ 1.234,56"; Bs via rate → "Bs 91.005,00" (es-VE)
+lib/payment.ts         # PAYMENT_METHODS — shared by schema, sale API and POS dropdown
+lib/sale.ts            # createSale(): totals, stock decrement, movements, rate snapshot
 middleware.ts          # auth gate + owner-only routes (/inventario, /ventas, /usuarios, /tasa)
 app/api/auth/          # login/logout route handlers (zod-validated)
 app/api/products/      # product CRUD + receive/adjust stock movements (owner-guarded)
+app/api/sales/         # POST a sale (any logged-in role, owner or seller)
 app/api/exchange-rate/ # POST the day's Bs/$ rate (owner)
+app/pos-screen.tsx     # client: search + product grid + ticket + Cobrar
+app/receipt.tsx        # printable ticket ($ + Bs, tasa usada, método)
 app/inventario/        # product table + modals: create/edit/stock/deactivate (owner)
 app/inventario/stock-bajo/  # low-stock view (sellers too, read-only)
 app/tasa/              # daily rate: current + history + set new (owner)
@@ -78,7 +83,7 @@ app/login/             # Spanish login screen
 scripts/seed.ts        # creates the owner user from SEED_OWNER_* env (fail-fast)
 ```
 
-Conventions: money as integer cents; ids via crypto.randomUUID(); stock non-negative via SQLite CHECK; every sale/receive/adjustment writes a `stock_movements` audit row; products are deactivated, never hard-deleted (history preservation). **Prices are USD cents; Bs amounts are derived via the day's exchange rate** (`exchange_rates.bs_per_usd`, integer céntimos de Bs per USD, append-only history, valid 12h from set — `lib/rate.ts`); sales snapshot the rate at sale time. Server pages read the DB directly; client mutations go through zod-validated API route handlers with owner checks in the handler (middleware guards pages by role).
+Conventions: money as integer cents; ids via crypto.randomUUID(); stock non-negative via SQLite CHECK; every sale/receive/adjustment writes a `stock_movements` audit row; products are deactivated, never hard-deleted (history preservation). **Prices are USD cents; Bs amounts are derived via the day's exchange rate** (`exchange_rates.bs_per_usd`, integer céntimos de Bs per USD, append-only history, valid 12h from set — `lib/rate.ts`); sales snapshot the rate at sale time. **A sale refuses to run without a valid rate** and is all-or-nothing: prices come from the DB (never the client) and a line without stock rolls the whole ticket back. Voiding a sale is phase 4. Server pages read the DB directly; client mutations go through zod-validated API route handlers with owner checks in the handler (middleware guards pages by role). **Keep server-only imports out of client components** — `@/db/client` pulls better-sqlite3 into the browser bundle; shared constants live in `lib/`.
 
 Drizzle + better-sqlite3 gotchas: **transactions are synchronous** — the callback must not be async; use `.all()`/`.get()`/`.run()` terminal methods (an async callback throws and can leave committed rows). **Stop the dev server before `npm run db:push -w apps/pos`** — drizzle-kit introspection wedges against a live WAL.
 
@@ -179,9 +184,12 @@ npm run seed -w apps/pos   # create the POS owner from SEED_OWNER_* env
 npm run typecheck         # tsc --noEmit across all workspaces
 npm run test              # vitest in apps/api against the `sabate_test` DB
 npm run test:db-setup     # one-time (idempotent): create `sabate_test` DB + drizzle push
+npm run test:pos          # vitest in apps/pos (sale transaction) against pos-test.db
+npm run test:db-setup -w apps/pos  # one-time: create/push apps/pos/data/pos-test.db
 
 # Tests run against a dedicated `sabate_test` database in the same docker
 # container — never the dev DB. Vitest files run sequentially (shared DB).
+# The POS suite uses its own throwaway SQLite file (dev POS data untouched).
 
 # Stripe local webhook forwarding (requires Stripe CLI):
 stripe listen --forward-to localhost:3001/api/webhooks/stripe

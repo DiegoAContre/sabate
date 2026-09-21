@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { check, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { PAYMENT_METHODS } from '../lib/payment';
 
 const id = () =>
   text('id')
@@ -45,9 +46,7 @@ export const sales = sqliteTable(
       .notNull()
       .references(() => users.id),
     total: integer('total').notNull(),
-    paymentMethod: text('payment_method', {
-      enum: ['efectivo', 'tarjeta', 'transferencia', 'cashea', 'otro'],
-    }).notNull(),
+    paymentMethod: text('payment_method', { enum: PAYMENT_METHODS }).notNull(),
     // Snapshot of the day's exchange rate (bs_per_usd, integer céntimos de Bs)
     // at the moment of sale — receipts and reports compute Bs exactly.
     exchangeRate: integer('exchange_rate').notNull(),

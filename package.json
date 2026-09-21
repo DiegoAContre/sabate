@@ -14,7 +14,8 @@
     "db:studio": "npm run db:studio -w packages/db",
     "seed": "npm run seed -w apps/api",
     "test": "npm run test -w apps/api",
-    "test:db-setup": "docker compose exec -T db psql -U sabate -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname = 'sabate_test'\" | grep -q 1 || docker compose exec -T db createdb -U sabate sabate_test && DATABASE_URL=postgres://sabate:sabate@localhost:5432/sabate_test npm run db:push"
+    "test:db-setup": "docker compose exec -T db psql -U sabate -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname = 'sabate_test'\" | grep -q 1 || docker compose exec -T db createdb -U sabate sabate_test && DATABASE_URL=postgres://sabate:sabate@localhost:5432/sabate_test npm run db:push",
+    "test:pos": "npm run test -w apps/pos"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",

@@ -4,7 +4,7 @@ import { SignOutButton } from './sign-out';
 
 export function Nav({ session }: { session: Session }) {
   return (
-    <header className="border-b border-gray-200 bg-gray-50">
+    <header className="no-print border-b border-gray-200 bg-gray-50">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
         <Link href="/" className="font-semibold">
           Sabate POS

@@ -85,6 +85,14 @@ npm run test            # checkout/webhook idempotency, auth, cart
 The test env is network-free (Stripe keys blanked) and test files run sequentially
 because they share the database.
 
+`apps/pos` has its own suite (sale transaction: totals, stock decrement, rollback,
+rate guard) against a throwaway `apps/pos/data/pos-test.db`:
+
+```bash
+npm run test:db-setup -w apps/pos   # one-time: creates the test DB + schema
+npm run test:pos                    # = npm run test -w apps/pos
+```
+
 ## Environment
 
 Each app has its own env file (see `.env.example` in the repo root):
