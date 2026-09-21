@@ -52,6 +52,11 @@ export const sales = sqliteTable(
     exchangeRate: integer('exchange_rate').notNull(),
     note: text('note'),
     createdAt: createdAt(),
+    // Set when the sale is voided: the row stays (history) but leaves the totals.
+    // No FK on voided_by on purpose: drizzle-kit's SQLite path recreates the
+    // table for FK columns and chokes; users are never deleted anyway.
+    voidedAt: integer('voided_at', { mode: 'timestamp' }),
+    voidedBy: text('voided_by'),
   },
   (t) => [index('sales_created_at_idx').on(t.createdAt)],
 );
@@ -83,7 +88,9 @@ export const stockMovements = sqliteTable(
       .notNull()
       .references(() => products.id, { onDelete: 'cascade' }),
     delta: integer('delta').notNull(),
-    reason: text('reason', { enum: ['venta', 'recepcion', 'ajuste'] }).notNull(),
+    reason: text('reason', {
+      enum: ['venta', 'recepcion', 'ajuste', 'anulacion'],
+    }).notNull(),
     userId: text('user_id')
       .notNull()
       .references(() => users.id),

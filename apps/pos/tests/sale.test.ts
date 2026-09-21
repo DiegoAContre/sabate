@@ -9,7 +9,7 @@ import {
   users,
 } from '@/db/client';
 import { formatBs } from '@/lib/format';
-import { createSale, SaleError } from '@/lib/sale';
+import { createSale, SaleError, voidSale } from '@/lib/sale';
 
 const USER_ID = 'test-user';
 const RATE = 910050; // 9100.50 Bs per USD
@@ -150,5 +150,54 @@ describe('createSale', () => {
 
   it('converts the total to Bs at the snapshotted rate', () => {
     expect(formatBs(600, RATE)).toBe('Bs 54.603,00');
+  });
+
+  it('voids a sale: restocks, records anulacion and keeps the row', async () => {
+    reset();
+    setRate();
+    const harina = addProduct('Harina', 250, 5);
+
+    const { sale } = await createSale({
+      userId: USER_ID,
+      items: [{ productId: harina.id, quantity: 2 }],
+      paymentMethod: 'efectivo',
+    });
+    const { sale: voided } = await voidSale({
+      saleId: sale.id,
+      userId: USER_ID,
+    });
+
+    expect(voided.voidedAt).toBeInstanceOf(Date);
+    expect(voided.voidedBy).toBe(USER_ID);
+    // Stock came back and the history stayed put.
+    expect(db.select().from(products).all()[0]?.stock).toBe(5);
+    expect(saleCount()).toBe(1);
+
+    const anulacion = db
+      .select()
+      .from(stockMovements)
+      .all()
+      .filter((m) => m.reason === 'anulacion');
+    expect(anulacion).toHaveLength(1);
+    expect(anulacion[0]).toMatchObject({ delta: 2, saleId: sale.id });
+  });
+
+  it('refuses to void twice and to void an unknown sale', async () => {
+    reset();
+    setRate();
+    const harina = addProduct('Harina', 250, 5);
+    const { sale } = await createSale({
+      userId: USER_ID,
+      items: [{ productId: harina.id, quantity: 1 }],
+      paymentMethod: 'efectivo',
+    });
+    await voidSale({ saleId: sale.id, userId: USER_ID });
+
+    await expect(
+      voidSale({ saleId: sale.id, userId: USER_ID }),
+    ).rejects.toThrow(/ya está anulada/);
+    await expect(
+      voidSale({ saleId: 'no-existe', userId: USER_ID }),
+    ).rejects.toThrow(SaleError);
   });
 });

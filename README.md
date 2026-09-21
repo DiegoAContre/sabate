@@ -24,6 +24,7 @@ This is a monorepo with four packages:
 apps/web       → Next.js frontend (App Router, Tailwind)
 apps/api       → Express 5 REST API
 apps/pos       → local POS system (self-contained: SQLite, own catalog — Spanish UI)
+                 punto de venta, inventario, ventas (reporte + anular), tasa del día, usuarios
 packages/db    → Drizzle schema, migrations, shared DB client
 ```
 
@@ -86,7 +87,8 @@ The test env is network-free (Stripe keys blanked) and test files run sequential
 because they share the database.
 
 `apps/pos` has its own suite (sale transaction: totals, stock decrement, rollback,
-rate guard) against a throwaway `apps/pos/data/pos-test.db`:
+rate guard; anulación; report totals and Caracas day grouping) against a throwaway
+`apps/pos/data/pos-test.db`:
 
 ```bash
 npm run test:db-setup -w apps/pos   # one-time: creates the test DB + schema

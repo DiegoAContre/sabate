@@ -11,8 +11,15 @@ import {
 import type { PaymentMethod } from '@/lib/payment';
 import { getCurrentRate } from '@/lib/rate';
 
-/** Business rule refusal — the route maps it to 409. */
-export class SaleError extends Error {}
+/** Business rule refusal — the route maps `status` to the HTTP code. */
+export class SaleError extends Error {
+  constructor(
+    message: string,
+    readonly status = 409,
+  ) {
+    super(message);
+  }
+}
 
 export interface SaleLineInput {
   productId: string;
@@ -116,5 +123,65 @@ export async function createSale({
     });
 
     return { sale, items: rows };
+  });
+}
+
+/**
+ * Voids a sale: the row stays in the history (flagged) so the money trail is
+ * never rewritten, the stock goes back, and each line leaves an `anulacion`
+ * movement. Owner-only (the route enforces the role).
+ */
+export async function voidSale({
+  saleId,
+  userId,
+}: {
+  saleId: string;
+  userId: string;
+}) {
+  return db.transaction((tx) => {
+    const sale = tx.select().from(sales).where(eq(sales.id, saleId)).get();
+    if (!sale) throw new SaleError('Venta no encontrada', 404);
+    if (sale.voidedAt) throw new SaleError('La venta ya está anulada');
+
+    const items = tx
+      .select()
+      .from(saleItems)
+      .where(eq(saleItems.saleId, saleId))
+      .all();
+
+    const [updated] = tx
+      .update(sales)
+      .set({ voidedAt: new Date(), voidedBy: userId })
+      .where(eq(sales.id, saleId))
+      .returning()
+      .all();
+
+    for (const item of items) {
+      // productId is null only if the product row was deleted — never happens
+      // (products are deactivated, not deleted).
+      if (!item.productId) continue;
+      const product = tx
+        .select()
+        .from(products)
+        .where(eq(products.id, item.productId))
+        .get();
+      if (!product) continue;
+
+      tx.update(products)
+        .set({ stock: sql`${products.stock} + ${item.quantity}` })
+        .where(eq(products.id, item.productId))
+        .run();
+      tx.insert(stockMovements)
+        .values({
+          productId: item.productId,
+          delta: item.quantity,
+          reason: 'anulacion',
+          userId,
+          saleId: sale.id,
+        })
+        .run();
+    }
+
+    return { sale: updated };
   });
 }

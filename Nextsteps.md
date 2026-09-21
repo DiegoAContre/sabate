@@ -204,12 +204,43 @@ Decisions (client): payment method only (no vuelto); no barcode/scanner (plain
 search + click); minimal receipt (name, date, seller, lines, $ + Bs, rate,
 method, short id — no RIF/correlativo); voiding a sale → phase 4.
 
-### Phase 4 — Sales history/report + users — PENDING
+### Phase 4 — Sales history/report + users — DONE (2026-09-21)
 
-/ventas (owner): list + totals by day and payment method, date filter; detail
-with **«Anular venta»** (owner only: restocks + compensating movement) and
-**reimprimir recibo** (reuses `app/receipt.tsx`).
-/usuarios: owner creates/deactivates sellers, resets passwords.
+- **/ventas (owner)**: filter by date range (native `<input type="date">`, plain
+  GET form → query params, «Hoy» resets), summary card (total del período in $
+  and Bs, cantidad de ventas, anuladas), breakdown **by day** and **by payment
+  method**, and the sales list (fecha, vendedor, método, $ + Bs, estado) capped
+  at 500 rows for the period.
+- **Numbers**: `lib/day.ts` cuts the day at **America/Caracas** (UTC−4, no DST)
+  so dev and the store server agree; `lib/report.ts::summarize()` is a pure
+  function that converts each sale at **its own snapshotted rate** (totals match
+  the printed tickets) and **leaves voided sales out of every total**.
+- **/ventas/[id]**: lines (producto, cantidad, precio, subtotal), tasa usada,
+  the printable receipt (reuses `app/receipt.tsx`) and **«Anular venta»**
+  (ConfirmDialog → repone stock + `anulacion` movement + marca la venta; la fila
+  nunca se borra). Shows «Anulada el …» when already void.
+- **/usuarios (owner)**: create sellers (usuario, nombre, contraseña ≥8),
+  reset password, activate/deactivate. Users are **never deleted** (sales
+  history); you can't deactivate yourself, and the last active owner is kept.
+- **Guards**: `/ventas/*` added to the owner-only middleware rule (a seller could
+  previously open a sale detail); void + users APIs check `owner` in the handler.
+- **Schema**: `sales.voided_at` / `sales.voided_by`, plus `anulacion` in
+  `stock_movements.reason`. Applied with a hand-written `ALTER TABLE` — see the
+  drizzle-kit note in AGENTS.md (push can't evolve an existing SQLite DB here;
+  fresh DBs, i.e. deployment, are fine).
+- **Tests** (13 in apps/pos): void restocks + flags + `anulacion` movement +
+  keeps the row, double void refuses, Caracas day boundary/range grouping,
+  summarize totals (own rate per sale, voided excluded), Bs conversion.
+- **Verified**: typecheck + `next build` clean (all routes dynamic); curl —
+  create seller 201, duplicate 409, short password 400, seller 403; reset
+  password then **login with the new one** (old one stops working); deactivate →
+  login 401 → activate → login 200; self-deactivation 400; unknown user 404;
+  sale → stock 7→5 → void → 7 with `anulacion` +2 and the sale flagged; void
+  twice 409, unknown 404, seller 403, no cookie 401; /ventas totals
+  ($ 6,50 / Bs 59.800,00, 2 ventas, 1 anulada) exclude the voided sale; empty
+  range shows the empty state; detail renders; seller redirected from /ventas,
+  /ventas/[id] and /usuarios. **Manual check left**: print preview of a
+  reimpresión.
 
 ### Phase 5 — Debian deployment (two-PC model) — PENDING, after phase 4
 

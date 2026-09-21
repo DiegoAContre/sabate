@@ -27,10 +27,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // /inventario/stock-bajo is seller-visible; the full inventory page is not.
+  // /inventario/stock-bajo is seller-visible; everything else under these
+  // prefixes (full inventory, any sale detail) is owner-only.
   const ownerOnly =
     OWNER_ONLY.includes(pathname) ||
-    (pathname.startsWith('/inventario/') && pathname !== '/inventario/stock-bajo');
+    (pathname.startsWith('/inventario/') && pathname !== '/inventario/stock-bajo') ||
+    pathname.startsWith('/ventas/');
 
   if (ownerOnly && session.role !== 'owner') {
     if (pathname.startsWith('/api/')) {
