@@ -271,27 +271,42 @@ opcionales**, elegidas siempre de una lista (nunca escritas a mano):
   inválido 400, seller 403 en escritura y redirigido de la página; render de
   `/inventario` (columnas nuevas), `/inventario/clasificacion` y `/`.
 
-### Phase 5 — Debian deployment (two-PC model) — PENDING, after phase 4
+### Phase 5 — Debian deployment (two-PC model) — PENDING, after phase 4b
 
-Server: headless Debian 12, **low RAM** → no git/build on the box; we ship a
-pre-built bundle. Clients: Firefox at the server IP.
+Server: headless Debian 12, **low RAM** (32-bit Atom N270, 988 MB), no
+git/build on the box → we ship a pre-built standalone bundle. Clients: Firefox
+at the server IP.
 
-- `output: 'standalone'` in `apps/pos/next.config.ts`; build on the dev machine
-  produces `.next/standalone/` (`server.js` + pruned node_modules incl. the
-  compiled `better_sqlite3.node` — verify server arch is x64 at install time).
-- `apps/pos/scripts/deploy.sh`: build here → rsync standalone + `.next/static` →
-  `server:/opt/sabate-pos/app/` → `ssh systemctl restart sabate-pos`.
-- systemd unit (file in repo + install steps): `PORT=80`, `HOSTNAME=0.0.0.0`,
+- `output: 'standalone'` in `apps/pos/next.config.ts` plus
+  `serverExternalPackages: ['node-sqlite3-wasm']` and `outputFileTracingIncludes`
+  for the `.wasm` (the driver loads it from disk at runtime, so tracing misses it
+  otherwise) → `.next/standalone/` (`server.js` + pruned node_modules incl. the
+  `.wasm`). **Engine is `node-sqlite3-wasm`, not better-sqlite3**: the server is
+  i686 (no `lm` flag), so there are no x64 prebuilds and better-sqlite3 can't
+  run there; the WASM driver is arch-neutral — verified the same standalone
+  bundle runs on Node 18 (bookworm stock). Deploy.sh: build → rsync standalone +
+  `.next/static` → `server:/opt/sabate-pos/app/` → `ssh systemctl restart
+  sabate-pos`.
+- **systemd unit** (file in repo + install steps): `PORT=80`, `HOSTNAME=0.0.0.0`,
   `AmbientCapabilities=CAP_NET_BIND_SERVICE` (bare-IP URL), `Restart=always`,
-  dedicated `pos` user; `AUTH_SECRET`/`SQLITE_PATH` via unit env.
-- DB lives outside the app dir (`/var/lib/sabate-pos/pos.db` via `SQLITE_PATH`)
-  so deploys never clobber data; seed runs once over SSH (exact command in README).
-- Server bootstrap (one-time, README): Node 22 via NodeSource (Debian 12's stock
-  Node 18 is too old), firewall = app port to LAN subnet only + SSH, timezone
-  `America/Caracas` (so daily sales match the store day), static IP / DHCP
-  reservation.
-- Backups: daily cron `sqlite3 pos.db ".backup …"` (WAL-safe; needs the `sqlite3`
-  package on the server), 30-day retention, restore procedure documented.
-- Accepted risk: plain HTTP on the store LAN (no TLS without a domain) — the
+  dedicated `pos` user; `AUTH_SECRET`/`SQLITE_PATH` via unit env; `ExecStartPre`
+  removes a stale `<db>.lock` dir left by a crash (the WASM VFS locks via that
+  dir — a stale one blocks startup).
+- **DB outside the app dir** (`/var/lib/sabate-pos/pos.db` via `SQLITE_PATH`)
+  so deploys never clobber data; seed (`SEED_OWNER_*`) runs once over SSH
+  (exact command in README).
+- **Server bootstrap** (one-time, README): Node from Debian 12 stock repo
+  (bookworm i386 ships Node 18 — the WASM driver and standalone both verified
+  on Node 18, no NodeSource needed); firewall = app port to LAN subnet only +
+  SSH; timezone `America/Caracas` (so daily totals match the store day);
+  static IP / DHCP reservation.
+- **Backups**: the VFS deletes WAL and locks the DB with a `<db>.lock`
+  directory, so no **external** process can open the file (`sqlite3 .backup` /
+  `VACUUM INTO` from cron both fail) — the route `POST /api/admin/backup`
+  (owner session or `x-backup-token: $BACKUP_TOKEN`) is the only working
+  option: it uses a **second in-process connection** to `VACUUM INTO …` after
+  every statement is finalized (verified: copy opens clean, 4 sales / 11
+  movements, 30-day retention in `BACKUP_DIR`, prune built in).
+- **Accepted risk**: plain HTTP on the store LAN (no TLS without a domain) — the
   session cookie is sniffable on-LAN. Fine for a small store; revisit only if
   it ever matters.
