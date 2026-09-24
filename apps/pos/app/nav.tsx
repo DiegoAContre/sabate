@@ -28,6 +28,12 @@ export function Nav({ session }: { session: Session }) {
                 Inventario
               </Link>
               <Link
+                href="/inventario/clasificacion"
+                className="text-gray-600 hover:text-gray-900"
+              >
+                Categorías
+              </Link>
+              <Link
                 href="/ventas"
                 className="text-gray-600 hover:text-gray-900"
               >

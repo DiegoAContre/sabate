@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { db, products } from '@/db/client';
 import { getSession } from '@/lib/auth';
 import { getCurrentRate } from '@/lib/rate';
+import { listTags } from '@/lib/tags';
 import { PosScreen } from './pos-screen';
 
 export default async function HomePage() {
@@ -17,10 +18,16 @@ export default async function HomePage() {
       .orderBy(asc(products.name)),
     getCurrentRate(),
   ]);
+  const categoryNames = new Map(listTags('category').map((c) => [c.id, c.name]));
+  const brandNames = new Map(listTags('brand').map((b) => [b.id, b.name]));
 
   return (
     <PosScreen
-      products={catalog}
+      products={catalog.map((p) => ({
+        ...p,
+        category: p.categoryId ? (categoryNames.get(p.categoryId) ?? '') : '',
+        brand: p.brandId ? (brandNames.get(p.brandId) ?? '') : '',
+      }))}
       rate={rate}
       isOwner={session.role === 'owner'}
       sellerName={session.name}

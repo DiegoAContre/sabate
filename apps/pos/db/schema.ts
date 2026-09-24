@@ -22,12 +22,25 @@ export const users = sqliteTable('users', {
   createdAt: createdAt(),
 });
 
+// Standardized pick-lists: products choose from these, they're never typed free
+// (so "adidas"/"Adidas" can't both exist). Both are optional on a product.
+export const categories = sqliteTable('categories', {
+  id: id(),
+  name: text('name').notNull(),
+});
+
+export const brands = sqliteTable('brands', {
+  id: id(),
+  name: text('name').notNull(),
+});
+
 export const products = sqliteTable(
   'products',
   {
     id: id(),
     name: text('name').notNull(),
-    sku: text('sku'),
+    categoryId: text('category_id').references(() => categories.id),
+    brandId: text('brand_id').references(() => brands.id),
     // Money in integer cents — same convention as the e-commerce schema.
     price: integer('price').notNull(),
     stock: integer('stock').notNull().default(0),
@@ -118,6 +131,8 @@ export const exchangeRates = sqliteTable(
 );
 
 export type User = typeof users.$inferSelect;
+export type Category = typeof categories.$inferSelect;
+export type Brand = typeof brands.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Sale = typeof sales.$inferSelect;
 export type SaleItem = typeof saleItems.$inferSelect;

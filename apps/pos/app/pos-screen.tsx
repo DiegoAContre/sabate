@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { Product } from '@/db/client';
+import type { Product } from '@/db/schema';
 import { PAYMENT_METHODS, type PaymentMethod } from '@/lib/payment';
 import { formatBs, formatRate, formatUsd } from '@/lib/format';
 import type { CurrentRate } from '@/lib/rate';
@@ -18,13 +18,15 @@ interface Line {
 
 const timeFmt = new Intl.DateTimeFormat('es-VE', { timeStyle: 'short' });
 
+type CatalogProduct = Product & { category: string; brand: string };
+
 export function PosScreen({
   products,
   rate,
   isOwner,
   sellerName,
 }: {
-  products: Product[];
+  products: CatalogProduct[];
   rate: CurrentRate | null;
   isOwner: boolean;
   sellerName: string;
@@ -45,16 +47,16 @@ export function PosScreen({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products;
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.sku ?? '').toLowerCase().includes(q),
+    return products.filter((p) =>
+      [p.name, p.brand, p.category].some((field) =>
+        field.toLowerCase().includes(q),
+      ),
     );
   }, [products, query]);
 
   const total = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
 
-  function add(product: Product) {
+  function add(product: CatalogProduct) {
     setError('');
     setLines((prev) => {
       const found = prev.find((l) => l.productId === product.id);
@@ -186,7 +188,7 @@ export function PosScreen({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nombre o SKU"
+            placeholder="Buscar por nombre, marca o categoría"
             className="mb-3 w-full rounded border border-gray-300 px-3 py-2 text-sm"
           />
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -199,6 +201,9 @@ export function PosScreen({
                 className="rounded border border-gray-200 p-3 text-left hover:border-gray-400 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <p className="text-sm font-medium">{p.name}</p>
+                {p.brand && (
+                  <p className="text-xs text-gray-500">{p.brand}</p>
+                )}
                 <p className="text-sm">{formatUsd(p.price)}</p>
                 <p
                   className={

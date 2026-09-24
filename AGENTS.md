@@ -61,7 +61,7 @@ src/
 Self-contained POS: Next.js API route handlers + better-sqlite3 via Drizzle. No Express, no packages/db. All in `apps/pos`:
 
 ```
-db/schema.ts           # users, products, sales, sale_items, stock_movements, exchange_rates (SQLite)
+db/schema.ts           # users, products, categories, brands, sales, sale_items, stock_movements, exchange_rates (SQLite)
 db/client.ts           # better-sqlite3 + drizzle (WAL, foreign_keys ON) — re-exports schema
 lib/token.ts           # edge-safe jose JWT sign/verify (used by middleware)
 lib/auth.ts            # getSession() via next/headers (re-exports token helpers)
@@ -71,9 +71,12 @@ lib/payment.ts         # PAYMENT_METHODS — shared by schema, sale API and POS 
 lib/sale.ts            # createSale() + voidSale(): totals, stock, movements, rate snapshot
 lib/day.ts             # Caracas day boundary (UTC−4, no DST) for reports and filters
 lib/report.ts          # summarize(): period totals + by day + by method (pure)
+lib/tags.ts            # categories/brands CRUD + guards (one code path, kind picks the table)
 middleware.ts          # auth gate + owner-only routes (/inventario, /ventas, /usuarios, /tasa)
 app/api/auth/          # login/logout route handlers (zod-validated)
 app/api/products/      # product CRUD + receive/adjust stock movements (owner-guarded)
+app/api/tags/[kind]/   # GET list + POST create a category/brand (owner writes)
+app/api/tags/[kind]/[id]/  # PATCH rename, DELETE (owner; 409 if a product uses it)
 app/api/sales/         # POST a sale (any logged-in role, owner or seller)
 app/api/sales/[id]/void/  # POST anula una venta (owner): restock + compensating movement
 app/api/users/         # POST create seller; PATCH [id]: password / isActive (owner)
@@ -81,6 +84,7 @@ app/api/exchange-rate/ # POST the day's Bs/$ rate (owner)
 app/pos-screen.tsx     # client: search + product grid + ticket + Cobrar
 app/receipt.tsx        # printable ticket ($ + Bs, tasa usada, método)
 app/inventario/        # product table + modals: create/edit/stock/deactivate (owner)
+app/inventario/clasificacion/  # categories + brands lists (owner): add, rename, delete
 app/inventario/stock-bajo/  # low-stock view (sellers too, read-only)
 app/ventas/            # sales list + day/method totals + date filter (owner)
 app/ventas/[id]/       # sale detail: lines, receipt reprint, «Anular venta» (owner)
@@ -90,7 +94,7 @@ app/login/             # Spanish login screen
 scripts/seed.ts        # creates the owner user from SEED_OWNER_* env (fail-fast)
 ```
 
-Conventions: money as integer cents; ids via crypto.randomUUID(); stock non-negative via SQLite CHECK; every sale/receive/adjustment writes a `stock_movements` audit row; products are deactivated, never hard-deleted (history preservation). **Prices are USD cents; Bs amounts are derived via the day's exchange rate** (`exchange_rates.bs_per_usd`, integer céntimos de Bs per USD, append-only history, valid 12h from set — `lib/rate.ts`); sales snapshot the rate at sale time. **A sale refuses to run without a valid rate** and is all-or-nothing: prices come from the DB (never the client) and a line without stock rolls the whole ticket back. **Voiding a sale flags it (`voided_at`/`voided_by`), never deletes it**: the stock is restocked and each line leaves an `anulacion` movement; reports count it as «anulada» and leave it out of the totals. Reports and filters use the **Caracas day** (`lib/day.ts`, UTC−4, no DST), not the machine's timezone; Bs totals convert each sale at **its own snapshotted rate**, so they match the printed tickets. Server pages read the DB directly; client mutations go through zod-validated API route handlers with owner checks in the handler (middleware guards pages by role). **Keep server-only imports out of client components** — `@/db/client` pulls better-sqlite3 into the browser bundle; shared constants live in `lib/`.
+Conventions: money as integer cents; ids via crypto.randomUUID(); stock non-negative via SQLite CHECK; every sale/receive/adjustment writes a `stock_movements` audit row; products are deactivated, never hard-deleted (history preservation). **A product's category and brand are optional and always picked from `categories`/`brands`** — never typed free, so "adidas"/"Adidas" can't both exist; names are unique ignoring case/spaces, and a value a product uses can't be deleted (409) — rename it. **Prices are USD cents; Bs amounts are derived via the day's exchange rate** (`exchange_rates.bs_per_usd`, integer céntimos de Bs per USD, append-only history, valid 12h from set — `lib/rate.ts`); sales snapshot the rate at sale time. **A sale refuses to run without a valid rate** and is all-or-nothing: prices come from the DB (never the client) and a line without stock rolls the whole ticket back. **Voiding a sale flags it (`voided_at`/`voided_by`), never deletes it**: the stock is restocked and each line leaves an `anulacion` movement; reports count it as «anulada» and leave it out of the totals. Reports and filters use the **Caracas day** (`lib/day.ts`, UTC−4, no DST), not the machine's timezone; Bs totals convert each sale at **its own snapshotted rate**, so they match the printed tickets. Server pages read the DB directly; client mutations go through zod-validated API route handlers with owner checks in the handler (middleware guards pages by role). **Keep server-only imports out of client components** — `@/db/client` pulls better-sqlite3 into the browser bundle; shared constants live in `lib/`.
 
 Drizzle + better-sqlite3 gotchas: **transactions are synchronous** — the callback must not be async; use `.all()`/`.get()`/`.run()` terminal methods (an async callback throws and can leave committed rows). **Stop the dev server before `npm run db:push -w apps/pos`** — drizzle-kit introspection wedges against a live WAL. **drizzle-kit 0.31 cannot evolve an existing SQLite DB here**: it wedges on `index X already exists` and its recreate-and-copy SQL for new columns is broken (leaves a `__new_*` table behind). For additive changes, apply `ALTER TABLE … ADD COLUMN …` by hand (the drizzle runtime doesn't care) and drop any `__new_*` table left over; pushing to a **fresh** DB works fine, which is what deployment does.
 

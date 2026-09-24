@@ -2,23 +2,38 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import type { Brand, Category } from '@/db/schema';
 import { Modal } from '../modal';
 
-export function NewProductButton() {
+export function NewProductButton({
+  categories,
+  brands,
+}: {
+  categories: Category[];
+  brands: Brand[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     name: '',
-    sku: '',
+    categoryId: '',
+    brandId: '',
     price: '',
     stock: '0',
     lowStockThreshold: '5',
   });
 
   function reset() {
-    setForm({ name: '', sku: '', price: '', stock: '0', lowStockThreshold: '5' });
+    setForm({
+      name: '',
+      categoryId: '',
+      brandId: '',
+      price: '',
+      stock: '0',
+      lowStockThreshold: '5',
+    });
     setError('');
   }
 
@@ -37,7 +52,8 @@ export function NewProductButton() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name,
-          sku: form.sku || null,
+          categoryId: form.categoryId || null,
+          brandId: form.brandId || null,
           price,
           stock: Number(form.stock),
           lowStockThreshold: Number(form.lowStockThreshold),
@@ -78,15 +94,42 @@ export function NewProductButton() {
               required
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              SKU <span className="font-normal text-gray-400">(opcional)</span>
-            </label>
-            <input
-              value={form.sku}
-              onChange={(e) => setForm({ ...form, sku: e.target.value })}
-              className="w-full rounded border border-gray-300 px-3 py-2"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Categoría{' '}
+                <span className="font-normal text-gray-400">(opcional)</span>
+              </label>
+              <select
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                className="w-full rounded border border-gray-300 px-3 py-2"
+              >
+                <option value="">Sin categoría</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Marca <span className="font-normal text-gray-400">(opcional)</span>
+              </label>
+              <select
+                value={form.brandId}
+                onChange={(e) => setForm({ ...form, brandId: e.target.value })}
+                className="w-full rounded border border-gray-300 px-3 py-2"
+              >
+                <option value="">Sin marca</option>
+                {brands.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

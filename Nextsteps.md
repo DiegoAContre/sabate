@@ -242,6 +242,35 @@ method, short id — no RIF/correlativo); voiding a sale → phase 4.
   /ventas/[id] and /usuarios. **Manual check left**: print preview of a
   reimpresión.
 
+### Phase 4b — Categorías y marcas — DONE (2026-09-23)
+
+SKU desaparece; en su lugar el producto tiene **categoría y marca, ambas
+opcionales**, elegidas siempre de una lista (nunca escritas a mano):
+
+- **Tablas** `categories` y `brands` (+ `products.category_id` / `brand_id`,
+  nullable). `lib/tags.ts` concentra las reglas y un mapa `kind → (tabla, columna
+  FK)` para no escribir el CRUD dos veces.
+- **Guards**: nombre único ignorando mayúsculas y espacios (409 «Ya existe»);
+  **no se puede eliminar un valor que usa un producto** (409 «En uso por N
+  productos») — se renombra; un id que no existe o del tipo equivocado da
+  404/400, no un 500 del FK.
+- **`/inventario/clasificacion`** (owner, bajo `/inventario/` así que el
+  middleware ya la protege): dos secciones con lista, agregar, renombrar y
+  eliminar con confirmación. Link en el nav y en la cabecera de Inventario.
+- **Producto**: los modales de alta/edición cambian el input SKU por dos
+  `<select>` («Sin categoría» / «Sin marca»); el inventario muestra las dos
+  columnas; el POS **busca por nombre, marca o categoría** y la tarjeta muestra
+  la marca.
+- **Migración**: tablas nuevas + `ALTER TABLE products ADD COLUMN …` a mano y
+  `DROP COLUMN sku` (SQLite 3.53; `sale_items` sólo guardaba nombre y precio, no
+  hay pérdida de historial). El test DB se recreó con `test:db-setup`.
+- **Tests**: `tests/tags.test.ts` (5) — alta, duplicado case-insensitive,
+  renombrar + choque, 404 al borrar lo que no existe, borrar en uso vs libre.
+- **Verificado**: typecheck + `next build` limpios, 18 tests POS + 22 api; curl —
+  201/409/404/400 en las rutas de tags, producto con y sin categoría+marca, id
+  inválido 400, seller 403 en escritura y redirigido de la página; render de
+  `/inventario` (columnas nuevas), `/inventario/clasificacion` y `/`.
+
 ### Phase 5 — Debian deployment (two-PC model) — PENDING, after phase 4
 
 Server: headless Debian 12, **low RAM** → no git/build on the box; we ship a
