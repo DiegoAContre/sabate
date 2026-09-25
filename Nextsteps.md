@@ -271,11 +271,11 @@ opcionales**, elegidas siempre de una lista (nunca escritas a mano):
   inválido 400, seller 403 en escritura y redirigido de la página; render de
   `/inventario` (columnas nuevas), `/inventario/clasificacion` y `/`.
 
-### Phase 5 — Debian deployment (two-PC model) — PENDING, after phase 4b
+### Phase 5 — Debian deployment (two-PC model) — DONE (2026-09-25)
 
-Server: headless Debian 12, **low RAM** (32-bit Atom N270, 988 MB), no
-git/build on the box → we ship a pre-built standalone bundle. Clients: Firefox
-at the server IP.
+Server: headless Debian 12, **low RAM** (32-bit Atom N270, 988 MB + 1 GB swap),
+no git/build on the box → we ship a pre-built standalone bundle. Clients:
+Firefox at the server IP.
 
 - `output: 'standalone'` in `apps/pos/next.config.ts` plus
   `serverExternalPackages: ['node-sqlite3-wasm']` and `outputFileTracingIncludes`
@@ -284,29 +284,49 @@ at the server IP.
   `.wasm`). **Engine is `node-sqlite3-wasm`, not better-sqlite3**: the server is
   i686 (no `lm` flag), so there are no x64 prebuilds and better-sqlite3 can't
   run there; the WASM driver is arch-neutral — verified the same standalone
-  bundle runs on Node 18 (bookworm stock). Deploy.sh: build → rsync standalone +
-  `.next/static` → `server:/opt/sabate-pos/app/` → `ssh systemctl restart
-  sabate-pos`.
-- **systemd unit** (file in repo + install steps): `PORT=80`, `HOSTNAME=0.0.0.0`,
-  `AmbientCapabilities=CAP_NET_BIND_SERVICE` (bare-IP URL), `Restart=always`,
-  dedicated `pos` user; `AUTH_SECRET`/`SQLITE_PATH` via unit env; `ExecStartPre`
-  removes a stale `<db>.lock` dir left by a crash (the WASM VFS locks via that
-  dir — a stale one blocks startup).
-- **DB outside the app dir** (`/var/lib/sabate-pos/pos.db` via `SQLITE_PATH`)
-  so deploys never clobber data; seed (`SEED_OWNER_*`) runs once over SSH
-  (exact command in README).
-- **Server bootstrap** (one-time, README): Node from Debian 12 stock repo
-  (bookworm i386 ships Node 18 — the WASM driver and standalone both verified
-  on Node 18, no NodeSource needed); firewall = app port to LAN subnet only +
-  SSH; timezone `America/Caracas` (so daily totals match the store day);
-  static IP / DHCP reservation.
+  bundle runs on Node 18.20.4 (bookworm i386 stock). **Standalone gotcha**: the
+  tar must be made of the **whole `.next/standalone/` root** (`apps/` +
+  `node_modules/` together — `node_modules` lives one level above `apps/pos`),
+  and `WorkingDirectory` must be `/opt/sabate-pos/apps/pos`; the `.env`/`data/`
+  folders that the build hoists into `apps/pos/` are `--exclude`d from the tar
+  (the systemd unit's `Environment=` supplies everything).
+- **deploy.sh**: `npm run build` → copy `.next/static` into the standalone →
+  tar (root of standalone) → `sudo tar --no-same-owner -xzf - -C /opt/sabate-pos`
+  over SSH (`--no-same-owner` so files land `root:root`, and the dev's uid never
+  leaks onto the box) → `sudo systemctl restart sabate-pos` → smoke. First run
+  also builds + ships the initial DB: applies `drizzle/*.sql` with a one-off
+  `node-sqlite3-wasm` script, seeds the owner (`SEED_OWNER_*`, default
+  `admin`/`sabate8718`), `install -o pos -g pos -m 600` to
+  `/var/lib/sabate-pos/pos.db`.
+- **setup-server.sh** (idempotent, one-time, run as root on the box): installs
+  nodejs/sudo/rsync/curl/ufw, creates the 1 GB swap + fstab entry, `pos` system
+  user, `/etc/sudoers.d/pos-deploy` (NOPASSWD only for the exact tar/install/
+  systemctl commands deploy.sh needs), systemd unit, daily cron backup, and
+  ufw. Secrets (`AUTH_SECRET`, `BACKUP_TOKEN`) are `openssl rand` generated and
+  kept in `/var/lib/sabate-pos/.env` (root-readable only) — **never in the
+  repo**.
+- **Server layout** (verified after a full reboot): systemd `sabate-pos.service`
+  `enabled`, `User=pos`, `WorkingDirectory=/opt/sabate-pos/apps/pos`,
+  `PORT=80` + `HOSTNAME=0.0.0.0` + `AmbientCapabilities=CAP_NET_BIND_SERVICE`,
+  `ExecStartPre` removes a stale `<db>.lock` (WASM VFS lock) → boots clean after
+  reboot. ufw: `deny incoming` + allow 22/80 from `192.168.100.0/24`. Cron daily
+  (03:00) backs up with `x-backup-token`.
+- **Middleware fix found during deploy**: `/api/admin/backup` was behind the
+  auth gate, so the cron's `x-backup-token` never reached the route (401). Now
+  the backup path is an explicit bypass and the route validates the token
+  itself.
 - **Backups**: the VFS deletes WAL and locks the DB with a `<db>.lock`
   directory, so no **external** process can open the file (`sqlite3 .backup` /
   `VACUUM INTO` from cron both fail) — the route `POST /api/admin/backup`
   (owner session or `x-backup-token: $BACKUP_TOKEN`) is the only working
   option: it uses a **second in-process connection** to `VACUUM INTO …` after
-  every statement is finalized (verified: copy opens clean, 4 sales / 11
-  movements, 30-day retention in `BACKUP_DIR`, prune built in).
+  every statement is finalized (verified: copy opens clean, 30-day retention in
+  `BACKUP_DIR`, prune built in).
+- **Deploy verification passed**: `npm run typecheck` clean; curl over the wire
+  — login 200, `/login` 200, rate `{"rate": 9200.5}` → 201, product 201, sale
+  201 (total from DB $, Bs at snapped rate), void 200 (stock 7→5→7), backup via
+  token 200 (file valid), **full `shutdown -r now` reboot → service comes back
+  `active (running)` automatically**, login/page/backup all 200 after boot.
 - **Accepted risk**: plain HTTP on the store LAN (no TLS without a domain) — the
   session cookie is sniffable on-LAN. Fine for a small store; revisit only if
   it ever matters.

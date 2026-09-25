@@ -7,7 +7,12 @@ const OWNER_ONLY = ['/inventario', '/ventas', '/usuarios', '/tasa'];
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith('/api/auth')) {
+  if (
+    pathname.startsWith('/api/auth') ||
+    pathname === '/api/admin/backup'
+  ) {
+    // /api/auth y /api/admin/backup validan dentro del route (credenciales o
+    // x-backup-token) — el middleware solo protege las demás rutas.
     return NextResponse.next();
   }
 
