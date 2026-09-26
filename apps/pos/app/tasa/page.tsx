@@ -65,31 +65,33 @@ export default async function TasaPage() {
       <RateForm />
 
       <h2 className="mb-3 mt-8 text-lg font-semibold">Historial</h2>
-      <table className="w-full max-w-md text-sm">
-        <thead>
-          <tr className="border-b border-gray-200 text-left text-gray-500">
-            <th className="py-2">Tasa (Bs/$)</th>
-            <th className="py-2">Establecida por</th>
-            <th className="py-2">Cuándo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {history.map((r) => (
-            <tr key={r.createdAt.toISOString()} className="border-b border-gray-100">
-              <td className="py-2 font-medium">{formatRate(r.bsPerUsd)}</td>
-              <td className="py-2 text-gray-600">{r.userName ?? '—'}</td>
-              <td className="py-2 text-gray-600">{fmt.format(r.createdAt)}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[20rem] max-w-md text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-left text-gray-500">
+              <th className="py-2">Tasa (Bs/$)</th>
+              <th className="py-2">Establecida por</th>
+              <th className="py-2">Cuándo</th>
             </tr>
-          ))}
-          {history.length === 0 && (
-            <tr>
-              <td colSpan={3} className="py-6 text-center text-gray-500">
-                Sin historial.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {history.map((r) => (
+              <tr key={r.createdAt.toISOString()} className="border-b border-gray-100">
+                <td className="py-2 font-medium">{formatRate(r.bsPerUsd)}</td>
+                <td className="py-2 text-gray-600">{r.userName ?? '—'}</td>
+                <td className="py-2 text-gray-600">{fmt.format(r.createdAt)}</td>
+              </tr>
+            ))}
+            {history.length === 0 && (
+              <tr>
+                <td colSpan={3} className="py-6 text-center text-gray-500">
+                  Sin historial.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

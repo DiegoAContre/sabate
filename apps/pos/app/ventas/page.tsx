@@ -102,122 +102,128 @@ export default async function VentasPage({
       <div className="mb-6 flex flex-col gap-6 sm:flex-row">
         <div className="flex-1">
           <h2 className="mb-2 text-lg font-semibold">Por día</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
-                <th className="py-2">Día</th>
-                <th className="py-2">Ventas</th>
-                <th className="py-2">Total ($)</th>
-                <th className="py-2">Total (Bs)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.byDay.map((d) => (
-                <tr key={d.day} className="border-b border-gray-100">
-                  <td className="py-2">{d.day}</td>
-                  <td className="py-2">{d.count}</td>
-                  <td className="py-2">{formatUsd(d.totalUsd)}</td>
-                  <td className="py-2">{formatBsCents(d.totalBs)}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[20rem] text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <th className="py-2">Día</th>
+                  <th className="py-2">Ventas</th>
+                  <th className="py-2">Total ($)</th>
+                  <th className="py-2">Total (Bs)</th>
                 </tr>
-              ))}
-              {summary.byDay.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-6 text-center text-gray-500">
-                    Sin ventas en el período.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {summary.byDay.map((d) => (
+                  <tr key={d.day} className="border-b border-gray-100">
+                    <td className="py-2">{d.day}</td>
+                    <td className="py-2">{d.count}</td>
+                    <td className="py-2">{formatUsd(d.totalUsd)}</td>
+                    <td className="py-2">{formatBsCents(d.totalBs)}</td>
+                  </tr>
+                ))}
+                {summary.byDay.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-gray-500">
+                      Sin ventas en el período.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="flex-1">
           <h2 className="mb-2 text-lg font-semibold">Por método de pago</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
-                <th className="py-2">Método</th>
-                <th className="py-2">Ventas</th>
-                <th className="py-2">Total ($)</th>
-                <th className="py-2">Total (Bs)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.byMethod.map((m) => (
-                <tr key={m.method} className="border-b border-gray-100">
-                  <td className="py-2">
-                    {m.method[0]!.toUpperCase() + m.method.slice(1)}
-                  </td>
-                  <td className="py-2">{m.count}</td>
-                  <td className="py-2">{formatUsd(m.totalUsd)}</td>
-                  <td className="py-2">{formatBsCents(m.totalBs)}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[20rem] text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <th className="py-2">Método</th>
+                  <th className="py-2">Ventas</th>
+                  <th className="py-2">Total ($)</th>
+                  <th className="py-2">Total (Bs)</th>
                 </tr>
-              ))}
-              {summary.byMethod.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-6 text-center text-gray-500">
-                    Sin ventas en el período.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {summary.byMethod.map((m) => (
+                  <tr key={m.method} className="border-b border-gray-100">
+                    <td className="py-2">
+                      {m.method[0]!.toUpperCase() + m.method.slice(1)}
+                    </td>
+                    <td className="py-2">{m.count}</td>
+                    <td className="py-2">{formatUsd(m.totalUsd)}</td>
+                    <td className="py-2">{formatBsCents(m.totalBs)}</td>
+                  </tr>
+                ))}
+                {summary.byMethod.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-gray-500">
+                      Sin ventas en el período.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       <h2 className="mb-2 text-lg font-semibold">Detalle</h2>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-200 text-left text-gray-500">
-            <th className="py-2">Fecha</th>
-            <th className="py-2">Vendedor</th>
-            <th className="py-2">Método</th>
-            <th className="py-2">Total ($)</th>
-            <th className="py-2">Total (Bs)</th>
-            <th className="py-2">Estado</th>
-            <th className="py-2" />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((s) => (
-            <tr key={s.id} className="border-b border-gray-100">
-              <td className="py-2">{fmt.format(s.createdAt)}</td>
-              <td className="py-2">{s.userName ?? '—'}</td>
-              <td className="py-2">
-                {s.paymentMethod[0]!.toUpperCase() + s.paymentMethod.slice(1)}
-              </td>
-              <td className="py-2">{formatUsd(s.total)}</td>
-              <td className="py-2">{formatBs(s.total, s.exchangeRate)}</td>
-              <td className="py-2">
-                {s.voidedAt ? (
-                  <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
-                    anulada
-                  </span>
-                ) : (
-                  <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
-                    activa
-                  </span>
-                )}
-              </td>
-              <td className="py-2 text-right">
-                <Link
-                  href={`/ventas/${s.id}`}
-                  className="text-gray-600 underline hover:text-gray-900"
-                >
-                  Ver
-                </Link>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[40rem] text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-left text-gray-500">
+              <th className="py-2">Fecha</th>
+              <th className="py-2">Vendedor</th>
+              <th className="py-2">Método</th>
+              <th className="py-2">Total ($)</th>
+              <th className="py-2">Total (Bs)</th>
+              <th className="py-2">Estado</th>
+              <th className="py-2" />
             </tr>
-          ))}
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={7} className="py-6 text-center text-gray-500">
-                Sin ventas en el período.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((s) => (
+              <tr key={s.id} className="border-b border-gray-100">
+                <td className="py-2">{fmt.format(s.createdAt)}</td>
+                <td className="py-2">{s.userName ?? '—'}</td>
+                <td className="py-2">
+                  {s.paymentMethod[0]!.toUpperCase() + s.paymentMethod.slice(1)}
+                </td>
+                <td className="py-2">{formatUsd(s.total)}</td>
+                <td className="py-2">{formatBs(s.total, s.exchangeRate)}</td>
+                <td className="py-2">
+                  {s.voidedAt ? (
+                    <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                      anulada
+                    </span>
+                  ) : (
+                    <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                      activa
+                    </span>
+                  )}
+                </td>
+                <td className="py-2 text-right">
+                  <Link
+                    href={`/ventas/${s.id}`}
+                    className="text-gray-600 underline hover:text-gray-900"
+                  >
+                    Ver
+                  </Link>
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={7} className="py-6 text-center text-gray-500">
+                  Sin ventas en el período.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

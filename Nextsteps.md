@@ -293,11 +293,14 @@ Firefox at the server IP.
 - **deploy.sh**: `npm run build` → copy `.next/static` into the standalone →
   tar (root of standalone) → `sudo tar --no-same-owner -xzf - -C /opt/sabate-pos`
   over SSH (`--no-same-owner` so files land `root:root`, and the dev's uid never
-  leaks onto the box) → `sudo systemctl restart sabate-pos` → smoke. First run
-  also builds + ships the initial DB: applies `drizzle/*.sql` with a one-off
-  `node-sqlite3-wasm` script, seeds the owner (`SEED_OWNER_*`, default
-  `admin`/`sabate8718`), `install -o pos -g pos -m 600` to
-  `/var/lib/sabate-pos/pos.db`.
+  leaks onto the box) → `sudo systemctl restart sabate-pos` → smoke.
+  **It never touches the server DB unless you pass `INIT_DB=1`**: with that flag
+  it builds the initial DB (applies `drizzle/*.sql` with a one-off
+  `node-sqlite3-wasm` script, seeds the owner `SEED_OWNER_*`, default
+  `admin`/`sabate8718`) and `install -o pos -g pos -m 600`s it to
+  `/var/lib/sabate-pos/pos.db`. With `BACKUP_TOKEN=…` it hits
+  `/api/admin/backup` **before** uploading — worth doing always, because the
+  03:00 cron silently produces no backup for any day the box is off at 03:00.
 - **setup-server.sh** (idempotent, one-time, run as root on the box): installs
   nodejs/sudo/rsync/curl/ufw, creates the 1 GB swap + fstab entry, `pos` system
   user, `/etc/sudoers.d/pos-deploy` (NOPASSWD only for the exact tar/install/
@@ -330,3 +333,39 @@ Firefox at the server IP.
 - **Accepted risk**: plain HTTP on the store LAN (no TLS without a domain) — the
   session cookie is sniffable on-LAN. Fine for a small store; revisit only if
   it ever matters.
+- **Incident 2026-09-26 (own goal, now impossible)**: the deploy used to seed
+  the DB whenever `test -f /var/lib/sabate-pos/pos.db` failed over SSH — but
+  that test runs as `mirlaac`, who cannot traverse `/var/lib/sabate-pos` (700
+  `pos:pos`), so it **always** failed and every deploy dropped a fresh empty DB
+  on top of the live one. The 2026-09-26 UI deploy did exactly that; the only
+  restorable snapshot was `pos-2026-09-25.db` (restored, still empty of
+  catalog). Rule: never decide anything about `/var/lib/sabate-pos` from a
+  `mirlaac` shell — the deploy must default to "don't touch the DB", which it
+  now does (`INIT_DB=1`).
+
+### Phase 6 — UI responsive (móvil) — DONE (2026-09-26)
+
+Staff use it from a phone as much as from the store PC, so the shell and the
+wide tables had to survive a 375 px viewport. UI is still Spanish, still no
+logic changes.
+
+- **`app/nav.tsx` rewritten + `app/nav-drawer.tsx` (new)**: one `linksFor()`
+  array is the only source of the role-gated menu (mirrors `OWNER_ONLY` in
+  `middleware.ts`) and is rendered twice — `hidden md:flex` row on desktop,
+  hamburger + native `<dialog>` drawer below `md` (left panel, backdrop, Esc
+  closes, active link via `usePathname`, closes on navigate). User name and
+  sign-out move into the drawer on mobile.
+- **Wide tables**: every `<table>` except `receipt.tsx` (it prints) and the POS
+  ticket now sits in an `overflow-x-auto` wrapper with a per-table `min-w-*`
+  (9 cols → 44rem, 2 cols → 20rem): `inventario`, `inventario/stock-bajo`,
+  `ventas` ×3, `ventas/[id]`, `usuarios`, `tasa`. Native horizontal scroll beat
+  rewriting eight tables as card lists.
+- **`app/pos-screen.tsx`**: the Total/Método/Cobrar block is a single element
+  that is `fixed inset-x-0 bottom-0` on mobile and `lg:static` inside the ticket
+  on desktop (same markup, same state, zero duplication); the search input is
+  `sticky top-0`, the ticket `lg:sticky lg:top-4`, and the root gets
+  `pb-52 lg:pb-0` so the fixed bar never covers the catalog.
+- No new dependencies and no `tailwind.config.*` — Tailwind v4 is CSS-first, so
+  the default `sm:`/`md:`/`lg:` breakpoints just work.
+- Verified in prod (`http://192.168.100.7`): hamburger markup served, tables
+  wrapped, `/inventario`, `/ventas`, `/tasa` all 200.

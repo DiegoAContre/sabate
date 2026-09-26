@@ -152,7 +152,7 @@ export function PosScreen({
   }
 
   return (
-    <div>
+    <div className="pb-52 lg:pb-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Punto de venta</h1>
         {rate?.isValid && (
@@ -189,7 +189,7 @@ export function PosScreen({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por nombre, marca o categoría"
-            className="mb-3 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            className="sticky top-0 z-10 mb-3 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm"
           />
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {filtered.map((p) => (
@@ -224,7 +224,7 @@ export function PosScreen({
           </div>
         </div>
 
-        <div className="w-full lg:w-80">
+        <div className="w-full lg:sticky lg:top-4 lg:w-80 lg:self-start">
           <div className="rounded border border-gray-200 bg-white">
             <table className="w-full text-sm">
               <tbody>
@@ -265,7 +265,7 @@ export function PosScreen({
               </tbody>
             </table>
 
-            <div className="border-t border-gray-200 p-3">
+            <div className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white p-3 lg:static lg:z-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Total</span>
                 <span className="font-semibold">{formatUsd(total)}</span>

@@ -64,28 +64,30 @@ export default async function VentaDetailPage({
       </div>
 
       <div className="no-print mb-6">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
-              <th className="py-2">Producto</th>
-              <th className="py-2">Cantidad</th>
-              <th className="py-2">Precio unitario</th>
-              <th className="py-2">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b border-gray-100">
-                <td className="py-2">{item.productName}</td>
-                <td className="py-2">{item.quantity}</td>
-                <td className="py-2">{formatUsd(item.unitPrice)}</td>
-                <td className="py-2">
-                  {formatUsd(item.unitPrice * item.quantity)}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[32rem] text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-gray-500">
+                <th className="py-2">Producto</th>
+                <th className="py-2">Cantidad</th>
+                <th className="py-2">Precio unitario</th>
+                <th className="py-2">Subtotal</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className="border-b border-gray-100">
+                  <td className="py-2">{item.productName}</td>
+                  <td className="py-2">{item.quantity}</td>
+                  <td className="py-2">{formatUsd(item.unitPrice)}</td>
+                  <td className="py-2">
+                    {formatUsd(item.unitPrice * item.quantity)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <p className="mt-3 text-right font-semibold">
           {formatUsd(sale.total)} · {formatBs(sale.total, sale.exchangeRate)}
         </p>

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Deploy del POS al server de la tienda.
 # Corre desde la máquina de desarrollo (requiere SSH a $SERVER_USER@192.168.100.7).
-# Primera vez: envía también la DB inicial (admin/sabate8718) si el server no la tiene.
+# BACKUP_TOKEN=...  respalda la DB del server antes de subir código (recomendado).
+# INIT_DB=1         (re)siembra la DB inicial admin/sabate8718 — ¡borra la del server!
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,8 +32,17 @@ echo "== bundle tar (raiz del standalone: apps/ + node_modules/) =="
 rm -f /tmp/pos-bundle.tgz
 tar -C "$STANDALONE" --exclude='./apps/*/data' --exclude='./apps/*/.env' -czf /tmp/pos-bundle.tgz .
 
-echo "== DB inicial (solo si el server no la tiene) =="
-if ! $SSH_CMD "$SERVER_USER@$SERVER_HOST" "test -f $REMOTE_DB"; then
+echo "== respaldo de la DB del server (antes de tocar nada) =="
+if [ -z "${BACKUP_TOKEN:-}" ]; then
+  echo "   BACKUP_TOKEN no definido: sin respaldo previo."
+else
+  $SSH_CMD "$SERVER_USER@$SERVER_HOST" \
+    "curl -sS -X POST -H 'x-backup-token: ${BACKUP_TOKEN}' http://127.0.0.1/api/admin/backup"
+  echo
+fi
+
+if [ "${INIT_DB:-}" = "1" ]; then
+  echo "== INIT_DB=1: se sobrescribe la DB del server con una inicial =="
   echo "   schema..."
   node -e "
     const { Database } = require('node-sqlite3-wasm');
@@ -51,6 +61,8 @@ if ! $SSH_CMD "$SERVER_USER@$SERVER_HOST" "test -f $REMOTE_DB"; then
   $SCP_CMD "$INIT_DB" "$SERVER_USER@$SERVER_HOST:/tmp/pos-init.db"
   $SSH_CMD "$SERVER_USER@$SERVER_HOST" "sudo install -o pos -g pos -m 600 /tmp/pos-init.db $REMOTE_DB && rm -f /tmp/pos-init.db"
   echo "   DB inicial enviada."
+else
+  echo "== DB del server intacta (INIT_DB=1 solo para sembrarla la primera vez) =="
 fi
 rm -f "$INIT_DB"
 
