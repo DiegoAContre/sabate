@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Escala toda la UI al 125% (texto y espaciado en rem) para legibilidad sin
+   necesidad de zoom. No afecta los breakpoints (usan rem del tamaño inicial). */
+html {
+  font-size: 125%;
+}
+
 @media print {
   @page {
     margin: 8mm;
