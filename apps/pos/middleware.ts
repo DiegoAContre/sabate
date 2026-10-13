@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE, verifyToken } from '@/lib/token';
 
-// Sellers can sell and watch stock levels; everything else is owner-only.
-const OWNER_ONLY = ['/inventario', '/ventas', '/usuarios', '/tasa'];
+// Sellers can sell, watch stock levels and view the inventory read-only;
+// everything else is owner-only.
+const OWNER_ONLY = ['/ventas', '/usuarios', '/tasa'];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -32,11 +33,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // /inventario/stock-bajo is seller-visible; everything else under these
-  // prefixes (full inventory, any sale detail) is owner-only.
+  // /inventario (read-only) and /inventario/stock-bajo are seller-visible;
+  // every other /inventario/* subpage (e.g. clasificacion) is owner-only.
   const ownerOnly =
     OWNER_ONLY.includes(pathname) ||
-    (pathname.startsWith('/inventario/') && pathname !== '/inventario/stock-bajo') ||
+    (pathname.startsWith('/inventario/') &&
+      pathname !== '/inventario/stock-bajo') ||
     pathname.startsWith('/ventas/');
 
   if (ownerOnly && session.role !== 'owner') {

@@ -40,6 +40,31 @@ function use<T>(sql: string, fn: (stmt: Stmt) => T): T {
   }
 }
 
+// Forward migration for additive columns: drizzle-kit can't evolve an existing
+// SQLite DB here and external tools can't open the file while the VFS holds it,
+// so the app adds the column on startup with its own connection (idempotent).
+// Skipped during `next build`: page-data collection opens one connection per
+// route bundle in parallel and the writes race against the VFS lock.
+if (process.env.NEXT_PHASE !== 'phase-production-build') {
+  const salesTable = use(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sales'",
+    (stmt) => stmt.get(),
+  );
+  if (salesTable) {
+    const columns = use('PRAGMA table_info(sales)', (stmt) => stmt.all()) as unknown as {
+      name: string;
+    }[];
+    if (!columns.some((c) => c.name === 'reference')) {
+      try {
+        sqlite.exec('ALTER TABLE sales ADD COLUMN reference text');
+      } catch (err) {
+        // Another connection (a parallel route bundle) may have won the race.
+        if (!String(err).includes('duplicate column name')) throw err;
+      }
+    }
+  }
+}
+
 class RawStatement {
   constructor(private sql: string) {}
 

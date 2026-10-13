@@ -8,8 +8,5 @@
         "glob": "deny",
         "skill": "allow",
         "question": "allow"
-    },
-    "plugin": [
-        "@dietrichgebert/ponytail"
-    ]
+    }
 }

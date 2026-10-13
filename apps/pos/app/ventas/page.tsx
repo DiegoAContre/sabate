@@ -3,6 +3,7 @@ import { and, desc, eq, gte, lt } from 'drizzle-orm';
 import { db, sales, users } from '@/db/client';
 import { CARACAS_TZ, caracasDayRange, caracasToday, isDay } from '@/lib/day';
 import { formatBs, formatBsCents, formatUsd } from '@/lib/format';
+import { paymentMethodLabel } from '@/lib/payment';
 import { summarize } from '@/lib/report';
 
 const fmt = new Intl.DateTimeFormat('es-VE', {
@@ -149,7 +150,7 @@ export default async function VentasPage({
                 {summary.byMethod.map((m) => (
                   <tr key={m.method} className="border-b border-gray-100">
                     <td className="py-2">
-                      {m.method[0]!.toUpperCase() + m.method.slice(1)}
+                      {paymentMethodLabel(m.method)}
                     </td>
                     <td className="py-2">{m.count}</td>
                     <td className="py-2">{formatUsd(m.totalUsd)}</td>
@@ -189,7 +190,7 @@ export default async function VentasPage({
                 <td className="py-2">{fmt.format(s.createdAt)}</td>
                 <td className="py-2">{s.userName ?? '—'}</td>
                 <td className="py-2">
-                  {s.paymentMethod[0]!.toUpperCase() + s.paymentMethod.slice(1)}
+                  {paymentMethodLabel(s.paymentMethod)}
                 </td>
                 <td className="py-2">{formatUsd(s.total)}</td>
                 <td className="py-2">{formatBs(s.total, s.exchangeRate)}</td>

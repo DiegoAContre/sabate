@@ -14,6 +14,7 @@ const saleSchema = z.object({
     )
     .min(1, 'Agrega al menos un producto'),
   paymentMethod: z.enum(PAYMENT_METHODS),
+  reference: z.string().trim().max(60).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
       userId: session.userId,
       items: parsed.data.items,
       paymentMethod: parsed.data.paymentMethod,
+      reference: parsed.data.reference,
     });
     return NextResponse.json(result, { status: 201 });
   } catch (err) {

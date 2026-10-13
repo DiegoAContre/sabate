@@ -4,8 +4,14 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Product } from '@/db/schema';
-import { PAYMENT_METHODS, type PaymentMethod } from '@/lib/payment';
-import { formatBs, formatRate, formatUsd } from '@/lib/format';
+import {
+  PAYMENT_METHODS,
+  REFERENCE_METHODS,
+  paymentMethodLabel,
+  type PaymentMethod,
+} from '@/lib/payment';
+import { formatBsCents, formatRate, formatUsd } from '@/lib/format';
+import { taxBreakdown } from '@/lib/tax';
 import type { CurrentRate } from '@/lib/rate';
 import { Receipt, type ReceiptItem, type ReceiptSale } from './receipt';
 
@@ -35,6 +41,7 @@ export function PosScreen({
   const [query, setQuery] = useState('');
   const [lines, setLines] = useState<Line[]>([]);
   const [method, setMethod] = useState<PaymentMethod>('efectivo');
+  const [reference, setReference] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [sale, setSale] = useState<{
@@ -55,6 +62,8 @@ export function PosScreen({
   }, [products, query]);
 
   const total = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
+  const breakdown = rate ? taxBreakdown(total, rate.bsPerUsd) : null;
+  const needsReference = REFERENCE_METHODS.includes(method);
 
   function add(product: CatalogProduct) {
     setError('');
@@ -104,6 +113,7 @@ export function PosScreen({
             quantity: l.quantity,
           })),
           paymentMethod: method,
+          reference: reference.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -114,6 +124,7 @@ export function PosScreen({
       setSale({ sale: data.sale, items: data.items });
       setLines([]);
       setQuery('');
+      setReference('');
       router.refresh(); // fresh stock levels for the next sale
     } catch {
       setError('Error de conexión');
@@ -154,7 +165,7 @@ export function PosScreen({
   return (
     <div className="pb-52 lg:pb-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Punto de venta</h1>
+        <h1 className="text-2xl font-bold">Página de Venta</h1>
         {rate?.isValid && (
           <span className="text-sm text-gray-500">
             Tasa: {formatRate(rate.bsPerUsd)} Bs/$ (vence{' '}
@@ -270,12 +281,24 @@ export function PosScreen({
                 <span className="text-gray-600">Total</span>
                 <span className="font-semibold">{formatUsd(total)}</span>
               </div>
-              {rate && (
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Total Bs</span>
-                  <span>
-                    {rateOk ? formatBs(total, rate.bsPerUsd) : 'tasa vencida'}
-                  </span>
+              {breakdown && (
+                <div className="mt-1 space-y-0.5 border-t border-gray-100 pt-1 text-xs text-gray-600">
+                  <div className="flex justify-between">
+                    <span>Base imponible</span>
+                    <span>{formatBsCents(breakdown.baseBsCents)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>IVA (16%)</span>
+                    <span>{formatBsCents(breakdown.ivaBsCents)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-gray-900">
+                    <span>Total Bs</span>
+                    <span>
+                      {rateOk
+                        ? formatBsCents(breakdown.totalBsCents)
+                        : 'tasa vencida'}
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -290,11 +313,23 @@ export function PosScreen({
                 >
                   {PAYMENT_METHODS.map((m) => (
                     <option key={m} value={m}>
-                      {m[0].toUpperCase() + m.slice(1)}
+                      {paymentMethodLabel(m)}
                     </option>
                   ))}
                 </select>
               </label>
+
+              {needsReference && (
+                <label className="mt-3 block text-xs text-gray-600">
+                  N° de referencia
+                  <input
+                    value={reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    placeholder="Referencia bancaria (opcional)"
+                    className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </label>
+              )}
 
               {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 

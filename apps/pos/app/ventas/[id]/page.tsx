@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db, saleItems, sales, users } from '@/db/client';
 import { CARACAS_TZ } from '@/lib/day';
 import { formatBs, formatRate, formatUsd } from '@/lib/format';
+import { paymentMethodLabel } from '@/lib/payment';
 import { Receipt } from '@/app/receipt';
 import { PrintButton } from './print-button';
 import { VoidButton } from './void-button';
@@ -55,12 +56,18 @@ export default async function VentaDetailPage({
         </div>
         <div>
           <p className="text-sm text-gray-600">Método</p>
-          <p>{sale.paymentMethod[0]!.toUpperCase() + sale.paymentMethod.slice(1)}</p>
+          <p>{paymentMethodLabel(sale.paymentMethod)}</p>
         </div>
         <div>
           <p className="text-sm text-gray-600">Tasa usada</p>
           <p>{formatRate(sale.exchangeRate)} Bs/$</p>
         </div>
+        {sale.reference && (
+          <div>
+            <p className="text-sm text-gray-600">Referencia</p>
+            <p>{sale.reference}</p>
+          </div>
+        )}
       </div>
 
       <div className="no-print mb-6">

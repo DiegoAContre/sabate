@@ -369,3 +369,37 @@ logic changes.
   the default `sm:`/`md:`/`lg:` breakpoints just work.
 - Verified in prod (`http://192.168.100.7`): hamburger markup served, tables
   wrapped, `/inventario`, `/ventas`, `/tasa` all 200.
+
+### Próximos pasos — mejorar el sistema de backups (IDEA, sin ejecutar)
+
+Hoy el respaldo es: cron 03:00 → `POST /api/admin/backup` → `VACUUM INTO` en
+`/var/lib/sabate-pos/backups/pos-AAAA-MM-DD.db`, retención 30 días. El
+deploy 2026-09-26 dejó ver los huecos (no había copia del día porque la caja
+estaba apagada a las 03:00, y el restore se improvisó a mano). Candidatos, de
+más barato a más pesado:
+
+1. **Respaldo que no se pierda por apagón**: sustituir la línea de
+   `/etc/cron.d/sabate-pos` por un *systemd timer* con `Persistent=true`
+   (`OnCalendar=*-*-* 03:00` + `OnBootSec=5min`), así el respaldo del día corre
+   en cuanto arranca la caja aunque se haya perdido la hora. Coste: ~10 líneas
+   en `setup-server.sh`.
+2. **`deploy.sh` con BACKUP_TOKEN obligatorio**: hoy avisa si falta; que falle
+   en seco (`set -e` + mensaje) para que ningún deploy pase sin snapshot previo.
+3. **Generaciones con hora y guarda anti-vacío**: snapshots `pos-<día>-<HHMM>`
+   antes de cada deploy, y que el respaldo no sobrescriba al del mismo día si la
+   DB a copiar está vacía (0 productos) cuando el anterior no lo estaba — evita
+   que una DB recién sembrada pise el último buen estado.
+4. **Verificación al respaldar**: que la ruta devuelva conteos
+   (productos/ventas/movimientos) y `PRAGMA integrity_check` de la copia, para
+   que un respaldo roto se vea de inmediato y no al restaurar.
+5. **Copia fuera de la caja**: `rsync`/`scp` diario a otro equipo de la LAN (o
+   un USB barato montado en el server) para sobrevivir a la falla del disco o
+   del equipo. Es lo único que cubre pérdida física.
+6. **`scripts/restore.sh`**: congelar lo que hoy se hizo a mano — `stop` →
+   `sudo install -o pos -g pos -m 600 <copia> /var/lib/sabate-pos/pos.db` →
+   `start` (con lista de copias disponibles), y probarlo de vez en cuando. Un
+   respaldo que nunca se restauró es un respaldo que no existe.
+
+> Recordatorio operativo: `mirlaac` no puede leer `/var/lib/sabate-pos`, así que
+> cualquier copia de la DB se saca con `sudo install` (permitido en sudoers) y
+> la lista de copias solo se obtiene probando nombres.

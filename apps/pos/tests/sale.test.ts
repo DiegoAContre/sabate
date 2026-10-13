@@ -92,6 +92,28 @@ describe('createSale', () => {
     });
   });
 
+  it('stores the payment reference (pago_movil) and null when absent', async () => {
+    reset();
+    setRate();
+    const harina = addProduct('Harina', 250, 5);
+
+    const { sale } = await createSale({
+      userId: USER_ID,
+      items: [{ productId: harina.id, quantity: 1 }],
+      paymentMethod: 'pago_movil',
+      reference: '  0012345678  ',
+    });
+    expect(sale.paymentMethod).toBe('pago_movil');
+    expect(sale.reference).toBe('0012345678');
+
+    const { sale: sinRef } = await createSale({
+      userId: USER_ID,
+      items: [{ productId: harina.id, quantity: 1 }],
+      paymentMethod: 'efectivo',
+    });
+    expect(sinRef.reference).toBeNull();
+  });
+
   it('refuses a line without stock and writes nothing', async () => {
     reset();
     setRate();

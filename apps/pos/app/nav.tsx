@@ -5,11 +5,11 @@ import { SignOutButton } from './sign-out';
 
 function linksFor(session: Session): NavLink[] {
   return [
-    { href: '/', label: 'Punto de venta' },
+    { href: '/', label: 'Página de Venta' },
+    { href: '/inventario', label: 'Inventario' },
     { href: '/inventario/stock-bajo', label: 'Stock bajo' },
     ...(session.role === 'owner'
       ? [
-          { href: '/inventario', label: 'Inventario' },
           { href: '/inventario/clasificacion', label: 'Categorías' },
           { href: '/ventas', label: 'Ventas' },
           { href: '/usuarios', label: 'Usuarios' },

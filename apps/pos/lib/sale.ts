@@ -30,6 +30,8 @@ export interface CreateSaleInput {
   userId: string;
   items: SaleLineInput[];
   paymentMethod: PaymentMethod;
+  /** Bank reference for transferencia / pago_movil (optional). */
+  reference?: string;
 }
 
 /**
@@ -41,6 +43,7 @@ export async function createSale({
   userId,
   items,
   paymentMethod,
+  reference,
 }: CreateSaleInput): Promise<{ sale: Sale; items: SaleItem[] }> {
   const rate = await getCurrentRate();
   if (!rate || !rate.isValid) {
@@ -100,7 +103,13 @@ export async function createSale({
 
     const [sale] = tx
       .insert(sales)
-      .values({ userId, total, paymentMethod, exchangeRate: rate.bsPerUsd })
+      .values({
+        userId,
+        total,
+        paymentMethod,
+        exchangeRate: rate.bsPerUsd,
+        reference: reference?.trim() || null,
+      })
       .returning()
       .all();
 

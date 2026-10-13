@@ -1,10 +1,13 @@
-import { formatBs, formatRate, formatUsd } from '@/lib/format';
+import { formatBsCents, formatRate, formatUsd } from '@/lib/format';
+import { paymentMethodLabel } from '@/lib/payment';
+import { taxBreakdown } from '@/lib/tax';
 
 export interface ReceiptSale {
   id: string;
   total: number;
   paymentMethod: string;
   exchangeRate: number;
+  reference?: string | null;
   createdAt: string | Date;
 }
 
@@ -28,6 +31,11 @@ export function Receipt({
   items: ReceiptItem[];
   sellerName: string;
 }) {
+  const { baseBsCents, ivaBsCents, totalBsCents } = taxBreakdown(
+    sale.total,
+    sale.exchangeRate,
+  );
+
   return (
     <div className="mx-auto w-72 text-sm text-black">
       <p className="text-center text-base font-bold">Sabate</p>
@@ -60,13 +68,27 @@ export function Receipt({
         <span>Total</span>
         <span>{formatUsd(sale.total)}</span>
       </div>
-      <div className="flex justify-between">
-        <span>Total Bs</span>
-        <span>{formatBs(sale.total, sale.exchangeRate)}</span>
+      <div className="mt-1 space-y-0.5 border-t border-dashed pt-1 text-xs text-gray-600">
+        <div className="flex justify-between">
+          <span>Base imponible</span>
+          <span>{formatBsCents(baseBsCents)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>IVA (16%)</span>
+          <span>{formatBsCents(ivaBsCents)}</span>
+        </div>
+        <div className="flex justify-between font-semibold text-black">
+          <span>Total Bs</span>
+          <span>{formatBsCents(totalBsCents)}</span>
+        </div>
       </div>
       <p className="mt-2 text-xs text-gray-600">
-        {sale.paymentMethod} · tasa {formatRate(sale.exchangeRate)} Bs/$
+        {paymentMethodLabel(sale.paymentMethod)} · tasa{' '}
+        {formatRate(sale.exchangeRate)} Bs/$
       </p>
+      {sale.reference && (
+        <p className="text-xs text-gray-600">Referencia: {sale.reference}</p>
+      )}
       <p className="mt-3 text-center text-xs text-gray-500">
         Ticket {sale.id.slice(0, 8)}
       </p>

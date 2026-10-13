@@ -63,6 +63,8 @@ export const sales = sqliteTable(
     // Snapshot of the day's exchange rate (bs_per_usd, integer céntimos de Bs)
     // at the moment of sale — receipts and reports compute Bs exactly.
     exchangeRate: integer('exchange_rate').notNull(),
+    // Bank reference for transferencia / pago_movil (optional).
+    reference: text('reference'),
     note: text('note'),
     createdAt: createdAt(),
     // Set when the sale is voided: the row stays (history) but leaves the totals.

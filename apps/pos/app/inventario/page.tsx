@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { asc } from 'drizzle-orm';
 import { db, products } from '@/db/client';
+import { getSession } from '@/lib/auth';
 import { getCurrentRate } from '@/lib/rate';
 import { formatBs, formatRate, formatUsd } from '@/lib/format';
 import { listTags } from '@/lib/tags';
@@ -10,6 +11,8 @@ import { StockButton } from './stock-button';
 import { DeactivateButton } from './deactivate-button';
 
 export default async function InventarioPage() {
+  const session = await getSession();
+  const isOwner = session?.role === 'owner';
   const [all, rate] = await Promise.all([
     db.select().from(products).orderBy(asc(products.name)),
     getCurrentRate(),
@@ -25,15 +28,17 @@ export default async function InventarioPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Inventario</h1>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/inventario/clasificacion"
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
-          >
-            Categorías y marcas
-          </Link>
-          <NewProductButton categories={categories} brands={brands} />
-        </div>
+        {isOwner && (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/inventario/clasificacion"
+              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+            >
+              Categorías y marcas
+            </Link>
+            <NewProductButton categories={categories} brands={brands} />
+          </div>
+        )}
       </div>
 
       {(!rate || !rate.isValid) && (
@@ -41,17 +46,16 @@ export default async function InventarioPage() {
           {rate ? (
             <>
               La tasa del día venció a las {timeFmt.format(rate.expiresAt)}.{' '}
-              <Link href="/tasa" className="font-medium underline">
-                Actualizar tasa
-              </Link>
             </>
           ) : (
-            <>
-              No hay tasa establecida.{' '}
-              <Link href="/tasa" className="font-medium underline">
-                Establecer tasa
-              </Link>
-            </>
+            <>No hay tasa establecida. </>
+          )}
+          {isOwner ? (
+            <Link href="/tasa" className="font-medium underline">
+              {rate ? 'Actualizar tasa' : 'Establecer tasa'}
+            </Link>
+          ) : (
+            <>Avisa al propietario para actualizarla.</>
           )}
         </div>
       )}
@@ -68,7 +72,7 @@ export default async function InventarioPage() {
               <th className="py-2">Stock</th>
               <th className="py-2">Umbral</th>
               <th className="py-2">Estado</th>
-              <th className="py-2 text-right">Acciones</th>
+              {isOwner && <th className="py-2 text-right">Acciones</th>}
             </tr>
           </thead>
           <tbody>
@@ -106,23 +110,27 @@ export default async function InventarioPage() {
                     </span>
                   )}
                 </td>
-                <td className="py-2">
-                  <div className="flex justify-end gap-2">
-                    <EditButton
-                      product={p}
-                      categories={categories}
-                      brands={brands}
-                    />
-                    <StockButton product={p} />
-                    <DeactivateButton product={p} />
-                  </div>
-                </td>
+                {isOwner && (
+                  <td className="py-2">
+                    <div className="flex justify-end gap-2">
+                      <EditButton
+                        product={p}
+                        categories={categories}
+                        brands={brands}
+                      />
+                      <StockButton product={p} />
+                      <DeactivateButton product={p} />
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
             {all.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-8 text-center text-gray-500">
-                  No hay productos. Crea el primero con «Nuevo producto».
+                <td colSpan={isOwner ? 9 : 8} className="py-8 text-center text-gray-500">
+                  {isOwner
+                    ? 'No hay productos. Crea el primero con «Nuevo producto».'
+                    : 'No hay productos.'}
                 </td>
               </tr>
             )}
