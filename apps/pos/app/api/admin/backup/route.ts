@@ -4,6 +4,7 @@ import { Database } from 'node-sqlite3-wasm';
 import { NextResponse, type NextRequest } from 'next/server';
 import { sqlite } from '@/db/client';
 import { getSession } from '@/lib/auth';
+import { caracasToday } from '@/lib/day';
 
 // Daily safety net, called by cron with BACKUP_TOKEN. The file lock means no
 // other process can open the DB, so the copy has to run inside the app — and on
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   const dbPath = process.env.SQLITE_PATH ?? path.join(process.cwd(), 'data', 'pos.db');
   const dir = process.env.BACKUP_DIR ?? path.join(process.cwd(), 'data', 'backups');
-  const target = path.join(dir, `pos-${new Date().toISOString().slice(0, 10)}.db`);
+  const target = path.join(dir, `pos-${caracasToday()}.db`);
   try {
     fs.mkdirSync(dir, { recursive: true });
     if (!fs.existsSync(target)) {

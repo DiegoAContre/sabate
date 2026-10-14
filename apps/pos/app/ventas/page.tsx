@@ -47,40 +47,46 @@ export default async function VentasPage({
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold">Ventas</h1>
+      <h1 className="mb-4 text-2xl font-bold">Historial de ventas</h1>
 
-      <form className="mb-6 flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Desde</span>
-          <input
-            type="date"
-            name="from"
-            defaultValue={from}
-            className="rounded border border-gray-300 px-2 py-1.5"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Hasta</span>
-          <input
-            type="date"
-            name="to"
-            defaultValue={to}
-            className="rounded border border-gray-300 px-2 py-1.5"
-          />
-        </label>
-        <button
-          type="submit"
-          className="rounded bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-700"
-        >
-          Filtrar
-        </button>
-        <Link
-          href="/ventas"
-          className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
-        >
-          Hoy
-        </Link>
-      </form>
+      <div className="mb-6 flex flex-wrap items-end gap-3">
+        <form className="flex flex-wrap items-end gap-3">
+          <label className="text-sm">
+            <span className="mb-1 block text-gray-600">Desde</span>
+            <input
+              type="date"
+              name="from"
+              defaultValue={from}
+              className="rounded border border-gray-300 px-2 py-1.5"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-gray-600">Hasta</span>
+            <input
+              type="date"
+              name="to"
+              defaultValue={to}
+              className="rounded border border-gray-300 px-2 py-1.5"
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-700"
+          >
+            Filtrar
+          </button>
+        </form>
+        <form>
+          <input type="hidden" name="from" value={today} />
+          <input type="hidden" name="to" value={today} />
+          <button
+            type="submit"
+            className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
+          >
+            Hoy
+          </button>
+        </form>
+      </div>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded border border-gray-200 p-4">

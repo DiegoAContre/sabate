@@ -24,7 +24,8 @@ This is a monorepo with four packages:
 apps/web       → Next.js frontend (App Router, Tailwind)
 apps/api       → Express 5 REST API
 apps/pos       → local POS system (self-contained: SQLite, own catalog — Spanish UI)
-                 punto de venta, inventario, ventas (reporte + anular), tasa del día, usuarios
+                 página de venta (pago móvil + referencia, desglose IVA/base imponible),
+                 inventario (vendedor solo lectura), ventas (reporte + anular), tasa del día, usuarios
 packages/db    → Drizzle schema, migrations, shared DB client
 ```
 
@@ -87,7 +88,8 @@ The test env is network-free (Stripe keys blanked) and test files run sequential
 because they share the database.
 
 `apps/pos` has its own suite (sale transaction: totals, stock decrement, rollback,
-rate guard; anulación; report totals and Caracas day grouping) against a throwaway
+rate guard; payment reference; anulación; report totals and Caracas day grouping;
+IVA/base imponible split with `base + iva === total`) against a throwaway
 `apps/pos/data/pos-test.db`:
 
 ```bash
@@ -125,6 +127,17 @@ Each app has its own env file (see `.env.example` in the repo root):
 - Admin panel: manage products, categories, users, and orders (status updates)
 - Race-safe inventory (non-negative stock enforced by DB constraint, idempotent checkout webhooks, admin notification on stock shortfalls)
 - Multiple image uploads via AWS S3
+
+### POS local (`apps/pos`)
+
+- Página de venta: búsqueda + grilla, ticket, **Pago Móvil** y transferencia con
+  número de referencia (opcional), y desglose de **IVA (16 %) / base imponible**
+  antes de cobrar
+- Factura / reimpresión con el desglose de IVA, la tasa usada, el método y la referencia
+- Tasa del día (Bs/$) con validez de 12 h; precios en USD y Bs derivados de la tasa
+- Inventario con categorías y marcas; el usuario **vendedor** entra en modo solo lectura
+- Ventas: totales por día y por método, filtro por fecha y anular (repone stock)
+- Usuarios, stock bajo y backups diarios; UI escalada al 125 % para legibilidad
 
 ## License
 

@@ -3,12 +3,19 @@
 // the store server always agree.
 export const CARACAS_TZ = 'America/Caracas';
 
-// en-CA formats as YYYY-MM-DD — cheapest way to get a sortable day key.
-const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: CARACAS_TZ });
+// Caracas is UTC−4 all year (no DST). We compute the day key by shifting the
+// instant and reading the UTC parts, instead of Intl: the store's Node ships
+// without the `en-CA` locale data (it falls back to `en-US` → "10/12/2026"),
+// so `Intl` can't be trusted for an ISO key here.
+const CARACAS_OFFSET_MS = 4 * 60 * 60 * 1000;
 
 /** 'YYYY-MM-DD' of the Caracas day a moment falls in. */
 export function caracasDayOf(date: Date): string {
-  return dayFmt.format(date);
+  const local = new Date(date.getTime() - CARACAS_OFFSET_MS);
+  const year = local.getUTCFullYear();
+  const month = String(local.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(local.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function caracasToday(now = new Date()): string {
@@ -23,6 +30,6 @@ export function isDay(value: string): boolean {
 export function caracasDayRange(day: string): { start: Date; end: Date } {
   const [year, month, date] = day.split('-').map(Number);
   // Midnight in Caracas (UTC−4) is 04:00 UTC.
-  const start = new Date(Date.UTC(year, month - 1, date) + 4 * 60 * 60 * 1000);
+  const start = new Date(Date.UTC(year, month - 1, date) + CARACAS_OFFSET_MS);
   return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 }

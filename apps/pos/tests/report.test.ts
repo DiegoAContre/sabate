@@ -32,6 +32,12 @@ describe('Caracas day', () => {
     expect(isDay('2026-09-21')).toBe(true);
     expect(isDay('21/09/2026')).toBe(false);
   });
+
+  it('builds an ISO day key regardless of ICU locale data', () => {
+    expect(caracasDayOf(new Date('2026-01-01T02:00:00Z'))).toBe('2025-12-31');
+    expect(caracasDayOf(new Date('2026-01-01T04:00:00Z'))).toBe('2026-01-01');
+    expect(caracasDayOf(new Date('2026-12-31T20:00:00Z'))).toBe('2026-12-31');
+  });
 });
 
 describe('summarize', () => {

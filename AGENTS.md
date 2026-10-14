@@ -1,4 +1,4 @@
-/# AGENTS.md
+# AGENTS.md
 
 ## Architecture
 
@@ -13,7 +13,7 @@ packages/db/         Drizzle schema, migrations, shared DB client
 
 **The web app routes all data through the Express API.** Never add API routes or server actions to `apps/web`. Frontend calls `apps/api` over HTTP.
 
-**Exception: `apps/pos` is self-contained on purpose.** It runs on a headless Debian 12 server on the store LAN — staff open it in Firefox at the server's IP (port 80 in production). It keeps its **own catalog and stock** (SQLite; path from `SQLITE_PATH` — dev: `apps/pos/data/pos.db`, prod: `/var/lib/sabate-pos/pos.db`, fully separate from the e-commerce Postgres DB), and uses API route handlers inside the app — the "no API routes" rule only applies to `apps/web`. UI is Spanish; roles are `owner` (todo) and `seller` (POS screen + stock-bajo only). Production deploys ship a pre-built `output: 'standalone'` bundle (low-RAM server: no git/build on the box) — see `Nextsteps.md` §6. **A deploy ships code, never data**: `apps/pos/scripts/deploy.sh` leaves the store's SQLite alone unless you pass `INIT_DB=1` (which reseeds and **wipes it**), and you should pass `BACKUP_TOKEN=…` so it snapshots before touching anything — both rules come from the 2026-09-26 incident where a deploy overwrote the live DB (an older `deploy.sh` asked `test -f /var/lib/sabate-pos/pos.db` as the SSH user, who can't traverse that directory, so the answer was always "no DB" and it reseeded every time).
+**Exception: `apps/pos` is self-contained on purpose.** It runs on a headless Debian 12 server on the store LAN — staff open it in Firefox at the server's IP (port 80 in production). It keeps its **own catalog and stock** (SQLite; path from `SQLITE_PATH` — dev: `apps/pos/data/pos.db`, prod: `/var/lib/sabate-pos/pos.db`, fully separate from the e-commerce Postgres DB), and uses API route handlers inside the app — the "no API routes" rule only applies to `apps/web`. UI is Spanish; roles are `owner` (todo) and `seller` (POS screen, stock-bajo and full inventory read-only). Production deploys ship a pre-built `output: 'standalone'` bundle (low-RAM server: no git/build on the box) — see `Nextsteps.md` §6. **A deploy ships code, never data**: `apps/pos/scripts/deploy.sh` leaves the store's SQLite alone unless you pass `INIT_DB=1` (which reseeds and **wipes it**), and you should pass `BACKUP_TOKEN=…` so it snapshots before touching anything — both rules come from the 2026-09-26 incident where a deploy overwrote the live DB (an older `deploy.sh` asked `test -f /var/lib/sabate-pos/pos.db` as the SSH user, who can't traverse that directory, so the answer was always "no DB" and it reseeded every time).
 
 ### apps/api structure
 
@@ -58,33 +58,34 @@ src/
 
 ### apps/pos structure
 
-Self-contained POS: Next.js API route handlers + better-sqlite3 via Drizzle. No Express, no packages/db. All in `apps/pos`:
+Self-contained POS: Next.js API route handlers + node-sqlite3-wasm via Drizzle. No Express, no packages/db. All in `apps/pos`:
 
 ```
 db/schema.ts           # users, products, categories, brands, sales, sale_items, stock_movements, exchange_rates (SQLite)
-db/client.ts           # better-sqlite3 + drizzle (WAL, foreign_keys ON) — re-exports schema
+db/client.ts           # node-sqlite3-wasm + drizzle (no WAL, foreign_keys ON, startup ADD COLUMN migration) — re-exports schema
 lib/token.ts           # edge-safe jose JWT sign/verify (used by middleware)
 lib/auth.ts            # getSession() via next/headers (re-exports token helpers)
 lib/rate.ts            # current rate + 12h validity
 lib/format.ts          # USD cents → "$ 1.234,56"; Bs via rate → "Bs 91.005,00" (es-VE)
-lib/payment.ts         # PAYMENT_METHODS — shared by schema, sale API and POS dropdown
-lib/sale.ts            # createSale() + voidSale(): totals, stock, movements, rate snapshot
+lib/tax.ts             # taxBreakdown(): IVA 16% / base imponible split (base + iva === total, Bs)
+lib/payment.ts         # PAYMENT_METHODS (incl. pago_movil) + labels + REFERENCE_METHODS
+lib/sale.ts            # createSale() + voidSale(): totals, stock, movements, rate snapshot, reference
 lib/day.ts             # Caracas day boundary (UTC−4, no DST) for reports and filters
 lib/report.ts          # summarize(): period totals + by day + by method (pure)
 lib/tags.ts            # categories/brands CRUD + guards (one code path, kind picks the table)
-middleware.ts          # auth gate + owner-only routes (/inventario, /ventas, /usuarios, /tasa)
+middleware.ts          # auth gate; owner-only /ventas, /usuarios, /tasa (/inventario is seller read-only)
 app/api/auth/          # login/logout route handlers (zod-validated)
 app/api/products/      # product CRUD + receive/adjust stock movements (owner-guarded)
 app/api/tags/[kind]/   # GET list + POST create a category/brand (owner writes)
 app/api/tags/[kind]/[id]/  # PATCH rename, DELETE (owner; 409 if a product uses it)
-app/api/sales/         # POST a sale (any logged-in role, owner or seller)
+app/api/sales/         # POST a sale (any logged-in role): items, paymentMethod, optional reference
 app/api/sales/[id]/void/  # POST anula una venta (owner): restock + compensating movement
 app/api/users/         # POST create seller; PATCH [id]: password / isActive (owner)
 app/api/exchange-rate/ # POST the day's Bs/$ rate (owner)
 app/api/admin/backup/  # POST daily VACUUM INTO copy (owner session or BACKUP_TOKEN)
-app/pos-screen.tsx     # client: search + product grid + ticket + Cobrar
-app/receipt.tsx        # printable ticket ($ + Bs, tasa usada, método)
-app/inventario/        # product table + modals: create/edit/stock/deactivate (owner)
+app/pos-screen.tsx     # client: search + grid + ticket + IVA breakdown + reference + Cobrar
+app/receipt.tsx        # printable ticket ($ + Bs, base imponible/IVA, tasa usada, método, referencia)
+app/inventario/        # product table + modals: create/edit/stock/deactivate (owner; seller read-only)
 app/inventario/clasificacion/  # categories + brands lists (owner): add, rename, delete
 app/inventario/stock-bajo/  # low-stock view (sellers too, read-only)
 app/ventas/            # sales list + day/method totals + date filter (owner)
@@ -95,11 +96,11 @@ app/login/             # Spanish login screen
 scripts/seed.ts        # creates the owner user from SEED_OWNER_* env (fail-fast)
 ```
 
-Conventions: money as integer cents; ids via crypto.randomUUID(); stock non-negative via SQLite CHECK; every sale/receive/adjustment writes a `stock_movements` audit row; products are deactivated, never hard-deleted (history preservation). **A product's category and brand are optional and always picked from `categories`/`brands`** — never typed free, so "adidas"/"Adidas" can't both exist; names are unique ignoring case/spaces, and a value a product uses can't be deleted (409) — rename it. **Prices are USD cents; Bs amounts are derived via the day's exchange rate** (`exchange_rates.bs_per_usd`, integer céntimos de Bs per USD, append-only history, valid 12h from set — `lib/rate.ts`); sales snapshot the rate at sale time. **A sale refuses to run without a valid rate** and is all-or-nothing: prices come from the DB (never the client) and a line without stock rolls the whole ticket back. **Voiding a sale flags it (`voided_at`/`voided_by`), never deletes it**: the stock is restocked and each line leaves an `anulacion` movement; reports count it as «anulada» and leave it out of the totals. Reports and filters use the **Caracas day** (`lib/day.ts`, UTC−4, no DST), not the machine's timezone; Bs totals convert each sale at **its own snapshotted rate**, so they match the printed tickets. Server pages read the DB directly; client mutations go through zod-validated API route handlers with owner checks in the handler (middleware guards pages by role). **Keep server-only imports out of client components** — `@/db/client` pulls node-sqlite3-wasm into the browser bundle; shared constants live in `lib/`.
+Conventions: money as integer cents; ids via crypto.randomUUID(); stock non-negative via SQLite CHECK; every sale/receive/adjustment writes a `stock_movements` audit row; products are deactivated, never hard-deleted (history preservation). **A product's category and brand are optional and always picked from `categories`/`brands`** — never typed free, so "adidas"/"Adidas" can't both exist; names are unique ignoring case/spaces, and a value a product uses can't be deleted (409) — rename it. **Prices are USD cents; Bs amounts are derived via the day's exchange rate** (`exchange_rates.bs_per_usd`, integer céntimos de Bs per USD, append-only history, valid 12h from set — `lib/rate.ts`); sales snapshot the rate at sale time. **Payment methods** live in `lib/payment.ts` (`efectivo`, `tarjeta`, `transferencia`, `pago_movil`, `cashea`, `otro`) with display labels and `REFERENCE_METHODS`; `transferencia`/`pago_movil` optionally store a bank `reference` on the sale (`sales.reference`, printed on the receipt and shown in the sale detail). **IVA is derived, never stored**: `lib/tax.ts` splits the Bs total into base imponible + 16% IVA (`base = round(total·100/116)`, `iva = total − base`, so `base + iva === total`); both the pre-`Cobrar` ticket and the receipt/reprint show it. **A sale refuses to run without a valid rate** and is all-or-nothing: prices come from the DB (never the client) and a line without stock rolls the whole ticket back. **Voiding a sale flags it (`voided_at`/`voided_by`), never deletes it**: the stock is restocked and each line leaves an `anulacion` movement; reports count it as «anulada» and leave it out of the totals. **Sellers may open `/inventario` read-only** — the page hides the create/edit/stock actions for them while every mutation API stays owner-guarded. Reports and filters use the **Caracas day** (`lib/day.ts`, UTC−4, no DST), not the machine's timezone; Bs totals convert each sale at **its own snapshotted rate**, so they match the printed tickets. **Readability**: `app/globals.css` sets `html { font-size: 125% }` so the whole rem-based UI scales ~25% without browser zoom (breakpoints unaffected — they use the initial root size). Server pages read the DB directly; client mutations go through zod-validated API route handlers with owner checks in the handler (middleware guards pages by role). **Keep server-only imports out of client components** — `@/db/client` pulls node-sqlite3-wasm into the browser bundle; shared constants live in `lib/`.
 
 **DB engine (node-sqlite3-wasm)**: the store server is 32-bit (Atom N270), so better-sqlite3 can't run there — `apps/pos/db/client.ts` adapts a pure-WASM driver to Drizzle's sync better-sqlite3 surface (single connection via `globalThis`, `prepare()/run()/get()/all()/raw()` + `transaction()`/SAVEPOINT). Gotchas: **no WAL** (journal `delete`); the VFS locks the DB via a `<db>.lock` directory, so no second process can open the file while the app runs; a stale lock after a crash blocks startup (next start / systemd removes it). `PRAGMA busy_timeout = 5000` keeps multiple in-process connections (dev's per-route bundles) from failing with SQLITE_BUSY. **Backups use a second in-process connection** (`app/api/admin/backup`, cron via `BACKUP_TOKEN`) because `VACUUM INTO` fails while any of the live connection's statements is open, and an external process can't open the file at all. `next.config.ts` ships `output: 'standalone'` + `serverExternalPackages: ['node-sqlite3-wasm']` + `outputFileTracingIncludes` for the `.wasm` binary (it's loaded from disk, tracing misses it otherwise); verified the bundle runs on Node 18.
 
-Drizzle gotchas: **transactions are synchronous** — the callback must not be async; use `.all()`/`.get()`/`.run()` terminal methods (an async callback throws and can leave committed rows). **Stop the dev server before `npm run db:push -w apps/pos`** — drizzle-kit introspection wedges against a live DB. **drizzle-kit 0.31 cannot evolve an existing SQLite DB here**: it wedges on `index X already exists` and its recreate-and-copy SQL for new columns is broken (leaves a `__new_*` table behind). For additive changes, apply `ALTER TABLE … ADD COLUMN …` by hand (the drizzle runtime doesn't care) and drop any `__new_*` table left over; pushing to a **fresh** DB works fine, which is what deployment does.
+Drizzle gotchas: **transactions are synchronous** — the callback must not be async; use `.all()`/`.get()`/`.run()` terminal methods (an async callback throws and can leave committed rows). **Stop the dev server before `npm run db:push -w apps/pos`** — drizzle-kit introspection wedges against a live DB. **drizzle-kit 0.31 cannot evolve an existing SQLite DB here**: it wedges on `index X already exists` and its recreate-and-copy SQL for new columns is broken (leaves a `__new_*` table behind). For additive changes, apply `ALTER TABLE … ADD COLUMN …` by hand (the drizzle runtime doesn't care) and drop any `__new_*` table left over; pushing to a **fresh** DB works fine, which is what deployment does. **The one additive change that had to reach the live store DB** is handled by an app-level, idempotent `ALTER TABLE … ADD COLUMN` in `apps/pos/db/client.ts` at startup (skipped during `next build`, where parallel route bundles race the VFS lock); that's how `sales.reference` shipped without a migration tool.
 
 ### apps/web structure
 

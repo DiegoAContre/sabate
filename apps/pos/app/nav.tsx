@@ -11,7 +11,7 @@ function linksFor(session: Session): NavLink[] {
     ...(session.role === 'owner'
       ? [
           { href: '/inventario/clasificacion', label: 'Categorías' },
-          { href: '/ventas', label: 'Ventas' },
+          { href: '/ventas', label: 'Historial de ventas' },
           { href: '/usuarios', label: 'Usuarios' },
           { href: '/tasa', label: 'Tasa' },
         ]

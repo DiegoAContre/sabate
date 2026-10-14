@@ -41,7 +41,7 @@ export default async function VentaDetailPage({
           href="/ventas"
           className="text-sm text-gray-600 underline hover:text-gray-900"
         >
-          Volver a ventas
+          Volver al historial
         </Link>
       </div>
 
