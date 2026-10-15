@@ -76,6 +76,7 @@ export default async function VentaDetailPage({
             <thead>
               <tr className="border-b border-gray-200 text-left text-gray-500">
                 <th className="py-2">Producto</th>
+                <th className="py-2">Talla</th>
                 <th className="py-2">Cantidad</th>
                 <th className="py-2">Precio unitario</th>
                 <th className="py-2">Subtotal</th>
@@ -85,6 +86,7 @@ export default async function VentaDetailPage({
               {items.map((item) => (
                 <tr key={item.id} className="border-b border-gray-100">
                   <td className="py-2">{item.productName}</td>
+                  <td className="py-2 text-gray-600">{item.size ?? '—'}</td>
                   <td className="py-2">{item.quantity}</td>
                   <td className="py-2">{formatUsd(item.unitPrice)}</td>
                   <td className="py-2">

@@ -1,6 +1,7 @@
 import { and, eq, gte, sql } from 'drizzle-orm';
 import {
   db,
+  productSizes,
   products,
   saleItems,
   sales,
@@ -10,6 +11,7 @@ import {
 } from '@/db/client';
 import type { PaymentMethod } from '@/lib/payment';
 import { getCurrentRate } from '@/lib/rate';
+import { DEFAULT_SIZE, normalizeSize } from '@/lib/product';
 
 /** Business rule refusal — the route maps `status` to the HTTP code. */
 export class SaleError extends Error {
@@ -23,6 +25,7 @@ export class SaleError extends Error {
 
 export interface SaleLineInput {
   productId: string;
+  size: string;
   quantity: number;
 }
 
@@ -59,6 +62,7 @@ export async function createSale({
       productName: string;
       unitPrice: number;
       quantity: number;
+      size: string;
     }[] = [];
 
     for (const item of items) {
@@ -70,26 +74,26 @@ export async function createSale({
       if (!product || !product.isActive) {
         throw new SaleError('Producto no disponible');
       }
-      if (product.stock < item.quantity) {
-        throw new SaleError(
-          `Stock insuficiente: ${product.name} (queda ${product.stock})`,
-        );
-      }
 
-      // Conditional decrement: the guard and the write are one statement.
+      const size = normalizeSize(item.size);
+      // Conditional decrement on the size: the guard and the write are one
+      // statement, so concurrent tickets can't oversell a size.
       const [updated] = tx
-        .update(products)
-        .set({ stock: sql`${products.stock} - ${item.quantity}` })
+        .update(productSizes)
+        .set({ quantity: sql`${productSizes.quantity} - ${item.quantity}` })
         .where(
           and(
-            eq(products.id, item.productId),
-            gte(products.stock, item.quantity),
+            eq(productSizes.productId, item.productId),
+            eq(productSizes.size, size),
+            gte(productSizes.quantity, item.quantity),
           ),
         )
         .returning()
         .all();
       if (!updated) {
-        throw new SaleError(`Stock insuficiente: ${product.name}`);
+        throw new SaleError(
+          `Stock insuficiente: ${product.name} (talla ${size})`,
+        );
       }
 
       total += product.price * item.quantity;
@@ -98,6 +102,7 @@ export async function createSale({
         productName: product.name,
         unitPrice: product.price,
         quantity: item.quantity,
+        size,
       });
     }
 
@@ -126,10 +131,21 @@ export async function createSale({
           reason: 'venta',
           userId,
           saleId: sale.id,
+          size: line.size,
         })
         .run();
       return row;
     });
+
+    // Refresh the denormalized total for every product touched.
+    for (const productId of new Set(lines.map((l) => l.productId))) {
+      tx.update(products)
+        .set({
+          stock: sql`(SELECT COALESCE(SUM(quantity), 0) FROM product_sizes WHERE product_id = ${productId})`,
+        })
+        .where(eq(products.id, productId))
+        .run();
+    }
 
     return { sale, items: rows };
   });
@@ -176,10 +192,29 @@ export async function voidSale({
         .get();
       if (!product) continue;
 
-      tx.update(products)
-        .set({ stock: sql`${products.stock} + ${item.quantity}` })
-        .where(eq(products.id, item.productId))
-        .run();
+      // Sales made before sizes existed have no size — restock the default.
+      const size = item.size ?? DEFAULT_SIZE;
+      const row = tx
+        .select()
+        .from(productSizes)
+        .where(
+          and(
+            eq(productSizes.productId, item.productId),
+            eq(productSizes.size, size),
+          ),
+        )
+        .get();
+      if (row) {
+        tx.update(productSizes)
+          .set({ quantity: sql`${productSizes.quantity} + ${item.quantity}` })
+          .where(eq(productSizes.id, row.id))
+          .run();
+      } else {
+        tx.insert(productSizes)
+          .values({ productId: item.productId, size, quantity: item.quantity })
+          .run();
+      }
+
       tx.insert(stockMovements)
         .values({
           productId: item.productId,
@@ -187,7 +222,15 @@ export async function voidSale({
           reason: 'anulacion',
           userId,
           saleId: sale.id,
+          size,
         })
+        .run();
+
+      tx.update(products)
+        .set({
+          stock: sql`(SELECT COALESCE(SUM(quantity), 0) FROM product_sizes WHERE product_id = ${item.productId})`,
+        })
+        .where(eq(products.id, item.productId))
         .run();
     }
 

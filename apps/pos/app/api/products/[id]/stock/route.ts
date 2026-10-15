@@ -1,18 +1,21 @@
 import { eq } from 'drizzle-orm';
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { db, products, stockMovements } from '@/db/client';
+import { db, products } from '@/db/client';
 import { getSession } from '@/lib/auth';
+import { adjustSize, receiveSize } from '@/lib/product';
 
 // Receive: how many arrived (+N). Adjust: the counted real total (delta computed).
 const stockSchema = z.discriminatedUnion('reason', [
   z.object({
     reason: z.literal('recepcion'),
+    size: z.string().trim().min(1, 'Talla requerida').max(20),
     quantity: z.number().int().positive('La cantidad debe ser mayor a 0'),
     note: z.string().optional(),
   }),
   z.object({
     reason: z.literal('ajuste'),
+    size: z.string().trim().min(1, 'Talla requerida').max(20),
     newStock: z.number().int().nonnegative('El total no puede ser negativo'),
     note: z.string().optional(),
   }),
@@ -37,37 +40,17 @@ export async function POST(
   }
   const data = parsed.data;
 
-  const result = db.transaction((tx) => {
-    const product = tx.select().from(products).where(eq(products.id, id)).get();
-    if (!product) return { error: 'Producto no encontrado' as const };
-
-    const delta =
-      data.reason === 'recepcion'
-        ? data.quantity
-        : data.newStock - product.stock;
-
-    if (delta === 0) return { product }; // nothing to record
-
-    const [updated] = tx
-      .update(products)
-      .set({ stock: product.stock + delta })
-      .where(eq(products.id, id))
-      .returning()
-      .all();
-    tx.insert(stockMovements)
-      .values({
-        productId: id,
-        delta,
-        reason: data.reason,
-        userId: session.userId,
-        note: data.note || null,
-      })
-      .run();
-    return { product: updated };
-  });
-
-  if ('error' in result) {
-    return NextResponse.json({ error: result.error }, { status: 404 });
+  const product = db.select().from(products).where(eq(products.id, id)).get();
+  if (!product) {
+    return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
   }
-  return NextResponse.json({ product: result.product });
+
+  if (data.reason === 'recepcion') {
+    receiveSize(id, session.userId, data.size, data.quantity, data.note);
+  } else {
+    adjustSize(id, session.userId, data.size, data.newStock, data.note);
+  }
+
+  const updated = db.select().from(products).where(eq(products.id, id)).get();
+  return NextResponse.json({ product: updated });
 }

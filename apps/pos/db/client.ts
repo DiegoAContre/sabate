@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { Database } from 'node-sqlite3-wasm';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- type-only, erased at build
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
@@ -40,27 +41,72 @@ function use<T>(sql: string, fn: (stmt: Stmt) => T): T {
   }
 }
 
-// Forward migration for additive columns: drizzle-kit can't evolve an existing
+// Forward migrations for additive changes: drizzle-kit can't evolve an existing
 // SQLite DB here and external tools can't open the file while the VFS holds it,
-// so the app adds the column on startup with its own connection (idempotent).
+// so the app applies them on startup with its own connection (idempotent).
 // Skipped during `next build`: page-data collection opens one connection per
 // route bundle in parallel and the writes race against the VFS lock.
-if (process.env.NEXT_PHASE !== 'phase-production-build') {
-  const salesTable = use(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sales'",
-    (stmt) => stmt.get(),
+function hasTable(name: string) {
+  return Boolean(
+    use(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      (stmt) => stmt.get([name]),
+    ),
   );
-  if (salesTable) {
-    const columns = use('PRAGMA table_info(sales)', (stmt) => stmt.all()) as unknown as {
+}
+
+function tableColumns(table: string) {
+  return (
+    use(`PRAGMA table_info(${table})`, (stmt) => stmt.all()) as unknown as {
       name: string;
-    }[];
-    if (!columns.some((c) => c.name === 'reference')) {
-      try {
-        sqlite.exec('ALTER TABLE sales ADD COLUMN reference text');
-      } catch (err) {
-        // Another connection (a parallel route bundle) may have won the race.
-        if (!String(err).includes('duplicate column name')) throw err;
-      }
+    }[]
+  ).map((c) => c.name);
+}
+
+function addColumn(table: string, column: string, ddl: string) {
+  if (!hasTable(table) || tableColumns(table).includes(column)) return;
+  try {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  } catch (err) {
+    // Another connection (a parallel route bundle) may have won the race.
+    if (!String(err).includes('duplicate column name')) throw err;
+  }
+}
+
+if (process.env.NEXT_PHASE !== 'phase-production-build') {
+  addColumn('sales', 'reference', 'reference text');
+  addColumn('products', 'code', 'code text');
+  addColumn('sale_items', 'size', 'size text');
+  addColumn('stock_movements', 'size', 'size text');
+
+  // Per-size stock; every product ends up with at least one size row.
+  sqlite.exec(`CREATE TABLE IF NOT EXISTS product_sizes (
+    id text PRIMARY KEY NOT NULL,
+    product_id text NOT NULL,
+    size text NOT NULL,
+    quantity integer DEFAULT 0 NOT NULL,
+    created_at integer NOT NULL,
+    CONSTRAINT product_sizes_quantity_non_negative CHECK(quantity >= 0),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON UPDATE no action ON DELETE cascade
+  )`);
+  sqlite.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS product_sizes_product_size_idx ON product_sizes (product_id, size)',
+  );
+
+  // Backfill: every existing product gets a «ÚNICA» size carrying its stock.
+  if (hasTable('products')) {
+    const missing = use(
+      `SELECT p.id AS id, p.stock AS stock FROM products p
+       LEFT JOIN product_sizes s ON s.product_id = p.id
+       WHERE s.id IS NULL`,
+      (stmt) => stmt.all(),
+    ) as unknown as { id: string; stock: number }[];
+    for (const row of missing) {
+      use(
+        `INSERT OR IGNORE INTO product_sizes (id, product_id, size, quantity, created_at)
+         VALUES (?, ?, 'ÚNICA', ?, ?)`,
+        (stmt) => stmt.run([randomUUID(), row.id, row.stock, Date.now()]),
+      );
     }
   }
 }

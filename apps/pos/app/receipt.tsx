@@ -15,6 +15,7 @@ export interface ReceiptItem {
   productName: string;
   quantity: number;
   unitPrice: number;
+  size?: string | null;
 }
 
 const dateTime = new Intl.DateTimeFormat('es-VE', {
@@ -53,6 +54,9 @@ export function Receipt({
               <td className="py-0.5">
                 {item.productName}
                 <span className="text-gray-500"> × {item.quantity}</span>
+                {item.size && (
+                  <span className="text-gray-500"> · {item.size}</span>
+                )}
               </td>
               <td className="py-0.5 text-right">
                 {formatUsd(item.unitPrice * item.quantity)}

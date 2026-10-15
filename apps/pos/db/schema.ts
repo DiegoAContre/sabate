@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { PAYMENT_METHODS } from '../lib/payment';
 
 const id = () =>
@@ -39,16 +39,39 @@ export const products = sqliteTable(
   {
     id: id(),
     name: text('name').notNull(),
+    // Optional SKU/code — free text, searched but not unique.
+    code: text('code'),
     categoryId: text('category_id').references(() => categories.id),
     brandId: text('brand_id').references(() => brands.id),
     // Money in integer cents — same convention as the e-commerce schema.
     price: integer('price').notNull(),
+    // Denormalized total = SUM(product_sizes.quantity); recomputed on every size
+    // change (lib/stock.ts). Kept as a column so stock-bajo/POS reads stay simple.
     stock: integer('stock').notNull().default(0),
     lowStockThreshold: integer('low_stock_threshold').notNull().default(5),
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [check('products_stock_non_negative', sql`${t.stock} >= 0`)],
+);
+
+// Per-size stock: a product's stock is the sum of its sizes' quantities. Every
+// product has at least one row (a product without real sizes uses «Única»).
+export const productSizes = sqliteTable(
+  'product_sizes',
+  {
+    id: id(),
+    productId: text('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    size: text('size').notNull(),
+    quantity: integer('quantity').notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('product_sizes_product_size_idx').on(t.productId, t.size),
+    check('product_sizes_quantity_non_negative', sql`${t.quantity} >= 0`),
+  ],
 );
 
 export const sales = sqliteTable(
@@ -90,6 +113,8 @@ export const saleItems = sqliteTable(
     productName: text('product_name').notNull(),
     unitPrice: integer('unit_price').notNull(),
     quantity: integer('quantity').notNull(),
+    // Snapshot of the size sold (null for sales made before sizes existed).
+    size: text('size'),
   },
   (t) => [index('sale_items_sale_id_idx').on(t.saleId)],
 );
@@ -111,6 +136,8 @@ export const stockMovements = sqliteTable(
       .references(() => users.id),
     saleId: text('sale_id').references(() => sales.id, { onDelete: 'set null' }),
     note: text('note'),
+    // Which size this movement applies to (null for older rows).
+    size: text('size'),
     createdAt: createdAt(),
   },
   (t) => [index('stock_movements_product_id_idx').on(t.productId)],
@@ -136,6 +163,7 @@ export type User = typeof users.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Brand = typeof brands.$inferSelect;
 export type Product = typeof products.$inferSelect;
+export type ProductSize = typeof productSizes.$inferSelect;
 export type Sale = typeof sales.$inferSelect;
 export type SaleItem = typeof saleItems.$inferSelect;
 export type StockMovement = typeof stockMovements.$inferSelect;

@@ -1,17 +1,24 @@
 import { asc, eq } from 'drizzle-orm';
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { db, products, stockMovements } from '@/db/client';
+import { db, products } from '@/db/client';
 import { getSession } from '@/lib/auth';
 import { tagExists } from '@/lib/tags';
+import { createProduct, normalizeSize } from '@/lib/product';
+
+const sizeSchema = z.object({
+  size: z.string().trim().min(1, 'Talla requerida').max(20),
+  quantity: z.number().int().nonnegative('La cantidad no puede ser negativa'),
+});
 
 const productSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
+  code: z.string().trim().max(40).nullable().optional(),
   categoryId: z.string().nullable().optional(),
   brandId: z.string().nullable().optional(),
   price: z.number().int().nonnegative(),
-  stock: z.number().int().nonnegative().default(0),
   lowStockThreshold: z.number().int().nonnegative().default(5),
+  sizes: z.array(sizeSchema).min(1, 'Agrega al menos una talla'),
 });
 
 export async function GET(req: NextRequest) {
@@ -45,32 +52,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Marca inválida' }, { status: 400 });
   }
 
-  const product = db.transaction((tx) => {
-    const [created] = tx
-      .insert(products)
-      .values({
-        name: data.name,
-        categoryId: data.categoryId || null,
-        brandId: data.brandId || null,
-        price: data.price,
-        stock: data.stock,
-        lowStockThreshold: data.lowStockThreshold,
-      })
-      .returning()
-      .all();
-    // Initial stock is a recepción — audit from day one.
-    if (data.stock > 0) {
-      tx.insert(stockMovements)
-        .values({
-          productId: created.id,
-          delta: data.stock,
-          reason: 'recepcion',
-          userId: session.userId,
-          note: 'Stock inicial',
-        })
-        .run();
-    }
-    return created;
+  const names = data.sizes.map((s) => normalizeSize(s.size));
+  if (new Set(names).size !== names.length) {
+    return NextResponse.json({ error: 'Hay tallas repetidas' }, { status: 400 });
+  }
+
+  const product = createProduct({
+    userId: session.userId,
+    name: data.name,
+    code: data.code,
+    categoryId: data.categoryId,
+    brandId: data.brandId,
+    price: data.price,
+    lowStockThreshold: data.lowStockThreshold,
+    sizes: data.sizes,
   });
 
   return NextResponse.json({ product }, { status: 201 });

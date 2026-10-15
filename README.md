@@ -130,10 +130,13 @@ Each app has its own env file (see `.env.example` in the repo root):
 
 ### POS local (`apps/pos`)
 
-- Página de venta: búsqueda + grilla, ticket, **Pago Móvil** y transferencia con
-  número de referencia (opcional), y desglose de **IVA (16 %) / base imponible**
-  antes de cobrar
-- Factura / reimpresión con el desglose de IVA, la tasa usada, el método y la referencia
+- Página de venta: búsqueda por **nombre o código**, grilla, selector de **talla**
+  y ticket, **Pago Móvil** y transferencia con número de referencia (opcional), y
+  desglose de **IVA (16 %) / base imponible** antes de cobrar
+- Factura / reimpresión con el desglose de IVA, la tasa usada, el método, la
+  referencia y la talla
+- **Productos con código (opcional) y tallas**: cada talla tiene su existencia y
+  el stock total es la suma de las tallas
 - Tasa del día (Bs/$) con validez de 12 h; precios en USD y Bs derivados de la tasa
 - Inventario con categorías y marcas; el usuario **vendedor** entra en modo solo lectura
 - Ventas: totales por día y por método, filtro por fecha y anular (repone stock)

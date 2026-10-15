@@ -4,6 +4,7 @@ import {
   brands,
   categories,
   exchangeRates,
+  productSizes,
   products,
   saleItems,
   sales,
@@ -25,6 +26,7 @@ function reset() {
   // Shared test DB: sale.test.ts leaves rows behind, and every table FKs users.
   db.delete(saleItems).run();
   db.delete(stockMovements).run();
+  db.delete(productSizes).run();
   db.delete(sales).run();
   db.delete(exchangeRates).run();
   db.delete(products).run();

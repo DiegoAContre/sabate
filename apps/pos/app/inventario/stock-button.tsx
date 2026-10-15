@@ -5,23 +5,39 @@ import { useState } from 'react';
 import type { Product } from '@/db/schema';
 import { Modal } from '../modal';
 
-export function StockButton({ product }: { product: Product }) {
+export function StockButton({
+  product,
+  sizes,
+}: {
+  product: Product;
+  sizes: { size: string; quantity: number }[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [reason, setReason] = useState<'recepcion' | 'ajuste'>('recepcion');
+  const [size, setSize] = useState(sizes[0]?.size ?? '');
   const [quantity, setQuantity] = useState('1');
   const [newStock, setNewStock] = useState('');
   const [note, setNote] = useState('');
 
+  const current = sizes.find((s) => s.size === size)?.quantity ?? 0;
+
   function openModal() {
+    const first = sizes[0]?.size ?? '';
     setReason('recepcion');
+    setSize(first);
     setQuantity('1');
-    setNewStock(product.stock.toString());
+    setNewStock((sizes[0]?.quantity ?? 0).toString());
     setNote('');
     setError('');
     setOpen(true);
+  }
+
+  function pickSize(next: string) {
+    setSize(next);
+    setNewStock((sizes.find((s) => s.size === next)?.quantity ?? 0).toString());
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -30,8 +46,9 @@ export function StockButton({ product }: { product: Product }) {
     setError('');
     const body =
       reason === 'recepcion'
-        ? { reason, quantity: Number(quantity), note: note || undefined }
-        : { reason, newStock: Number(newStock), note: note || undefined };
+        ? { reason, size, quantity: Number(quantity), note: note || undefined }
+        : { reason, size, newStock: Number(newStock), note: note || undefined };
+
     try {
       const res = await fetch(`/api/products/${product.id}/stock`, {
         method: 'POST',
@@ -63,8 +80,13 @@ export function StockButton({ product }: { product: Product }) {
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Movimiento de stock">
         <p className="mb-3 text-sm text-gray-600">
-          {product.name} — stock actual: <strong>{product.stock}</strong>
+          {product.name} — stock total: <strong>{product.stock}</strong>
         </p>
+        {sizes.length > 0 && (
+          <p className="mb-3 text-xs text-gray-500">
+            {sizes.map((s) => `${s.size}: ${s.quantity}`).join(' · ')}
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-1">
@@ -86,6 +108,21 @@ export function StockButton({ product }: { product: Product }) {
               Ajuste (conteo)
             </label>
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">Talla</label>
+            <select
+              value={size}
+              onChange={(e) => pickSize(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2"
+              required
+            >
+              {sizes.map((s) => (
+                <option key={s.size} value={s.size}>
+                  {s.size} (actual: {s.quantity})
+                </option>
+              ))}
+            </select>
+          </div>
           {reason === 'recepcion' ? (
             <div>
               <label className="mb-1 block text-sm font-medium">
@@ -103,7 +140,7 @@ export function StockButton({ product }: { product: Product }) {
           ) : (
             <div>
               <label className="mb-1 block text-sm font-medium">
-                Stock total contado
+                Existencias contadas de {size}
               </label>
               <input
                 type="number"
@@ -114,8 +151,8 @@ export function StockButton({ product }: { product: Product }) {
                 required
               />
               <p className="mt-1 text-xs text-gray-400">
-                Delta registrado: {Number(newStock) - product.stock >= 0 ? '+' : ''}
-                {Number(newStock) - product.stock}
+                Delta registrado: {Number(newStock) - current >= 0 ? '+' : ''}
+                {Number(newStock) - current}
               </p>
             </div>
           )}
@@ -141,7 +178,7 @@ export function StockButton({ product }: { product: Product }) {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || sizes.length === 0}
               className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
             >
               {loading ? 'Registrando…' : 'Registrar'}

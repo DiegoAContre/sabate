@@ -9,6 +9,7 @@ const saleSchema = z.object({
     .array(
       z.object({
         productId: z.string().min(1),
+        size: z.string().trim().min(1, 'Talla requerida').max(20),
         quantity: z.number().int().positive('La cantidad debe ser mayor a 0'),
       }),
     )

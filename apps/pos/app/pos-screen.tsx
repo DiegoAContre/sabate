@@ -13,10 +13,12 @@ import {
 import { formatBsCents, formatRate, formatUsd } from '@/lib/format';
 import { taxBreakdown } from '@/lib/tax';
 import type { CurrentRate } from '@/lib/rate';
+import { Modal } from './modal';
 import { Receipt, type ReceiptItem, type ReceiptSale } from './receipt';
 
 interface Line {
   productId: string;
+  size: string;
   name: string;
   unitPrice: number;
   quantity: number;
@@ -24,7 +26,11 @@ interface Line {
 
 const timeFmt = new Intl.DateTimeFormat('es-VE', { timeStyle: 'short' });
 
-type CatalogProduct = Product & { category: string; brand: string };
+type CatalogProduct = Product & {
+  category: string;
+  brand: string;
+  sizes: { size: string; quantity: number }[];
+};
 
 export function PosScreen({
   products,
@@ -44,6 +50,7 @@ export function PosScreen({
   const [reference, setReference] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [picker, setPicker] = useState<CatalogProduct | null>(null);
   const [sale, setSale] = useState<{
     sale: ReceiptSale;
     items: ReceiptItem[];
@@ -55,7 +62,7 @@ export function PosScreen({
     const q = query.trim().toLowerCase();
     if (!q) return products;
     return products.filter((p) =>
-      [p.name, p.brand, p.category].some((field) =>
+      [p.name, p.brand, p.category, p.code ?? ''].some((field) =>
         field.toLowerCase().includes(q),
       ),
     );
@@ -65,15 +72,24 @@ export function PosScreen({
   const breakdown = rate ? taxBreakdown(total, rate.bsPerUsd) : null;
   const needsReference = REFERENCE_METHODS.includes(method);
 
-  function add(product: CatalogProduct) {
+  function availableFor(product: CatalogProduct, size: string) {
+    return product.sizes.find((s) => s.size === size)?.quantity ?? 0;
+  }
+
+  function addDirect(product: CatalogProduct, size: string) {
     setError('');
     setLines((prev) => {
-      const found = prev.find((l) => l.productId === product.id);
+      const found = prev.find(
+        (l) => l.productId === product.id && l.size === size,
+      );
+      const stock = availableFor(product, size);
       if (!found) {
+        if (stock < 1) return prev;
         return [
           ...prev,
           {
             productId: product.id,
+            size,
             name: product.name,
             unitPrice: product.price,
             quantity: 1,
@@ -81,18 +97,27 @@ export function PosScreen({
         ];
       }
       return prev.map((l) =>
-        l.productId === product.id
-          ? { ...l, quantity: Math.min(l.quantity + 1, product.stock) }
+        l.productId === product.id && l.size === size
+          ? { ...l, quantity: Math.min(l.quantity + 1, stock) }
           : l,
       );
     });
   }
 
-  function changeQty(productId: string, delta: number) {
+  function handleProduct(product: CatalogProduct) {
+    if (product.sizes.length === 0) return;
+    if (product.sizes.length === 1) {
+      addDirect(product, product.sizes[0].size);
+      return;
+    }
+    setPicker(product);
+  }
+
+  function changeQty(productId: string, size: string, delta: number) {
     setLines((prev) =>
       prev
         .map((l) =>
-          l.productId === productId
+          l.productId === productId && l.size === size
             ? { ...l, quantity: l.quantity + delta }
             : l,
         )
@@ -110,6 +135,7 @@ export function PosScreen({
         body: JSON.stringify({
           items: lines.map((l) => ({
             productId: l.productId,
+            size: l.size,
             quantity: l.quantity,
           })),
           paymentMethod: method,
@@ -199,7 +225,7 @@ export function PosScreen({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nombre, marca o categoría"
+            placeholder="Buscar por nombre, código, marca o categoría"
             className="sticky top-0 z-10 mb-3 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm"
           />
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -207,13 +233,15 @@ export function PosScreen({
               <button
                 key={p.id}
                 type="button"
-                onClick={() => add(p)}
+                onClick={() => handleProduct(p)}
                 disabled={p.stock === 0}
                 className="rounded border border-gray-200 p-3 text-left hover:border-gray-400 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <p className="text-sm font-medium">{p.name}</p>
-                {p.brand && (
-                  <p className="text-xs text-gray-500">{p.brand}</p>
+                {(p.brand || p.category) && (
+                  <p className="text-xs text-gray-500">
+                    {[p.brand, p.category].filter(Boolean).join(' · ')}
+                  </p>
                 )}
                 <p className="text-sm">{formatUsd(p.price)}</p>
                 <p
@@ -223,7 +251,11 @@ export function PosScreen({
                       : 'text-xs text-gray-500'
                   }
                 >
-                  {p.stock === 0 ? 'Sin stock' : `Stock: ${p.stock}`}
+                  {p.stock === 0
+                    ? 'Sin stock'
+                    : p.sizes.length > 1
+                      ? `Stock: ${p.stock} · ${p.sizes.filter((s) => s.quantity > 0).map((s) => s.size).join(' ')}`
+                      : `Stock: ${p.stock}`}
                 </p>
               </button>
             ))}
@@ -240,13 +272,21 @@ export function PosScreen({
             <table className="w-full text-sm">
               <tbody>
                 {lines.map((l) => (
-                  <tr key={l.productId} className="border-b border-gray-100">
-                    <td className="px-3 py-2">{l.name}</td>
+                  <tr
+                    key={`${l.productId}::${l.size}`}
+                    className="border-b border-gray-100"
+                  >
+                    <td className="px-3 py-2">
+                      {l.name}
+                      <span className="ml-1 text-xs text-gray-500">
+                        ({l.size})
+                      </span>
+                    </td>
                     <td className="px-1 py-2">
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={() => changeQty(l.productId, -1)}
+                          onClick={() => changeQty(l.productId, l.size, -1)}
                           className="h-6 w-6 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
                         >
                           −
@@ -254,7 +294,7 @@ export function PosScreen({
                         <span className="w-6 text-center">{l.quantity}</span>
                         <button
                           type="button"
-                          onClick={() => changeQty(l.productId, 1)}
+                          onClick={() => changeQty(l.productId, l.size, 1)}
                           className="h-6 w-6 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
                         >
                           +
@@ -345,6 +385,34 @@ export function PosScreen({
           </div>
         </div>
       </div>
+
+      {picker && (
+        <Modal
+          open
+          onClose={() => setPicker(null)}
+          title={`Talla — ${picker.name}`}
+        >
+          <div className="flex flex-wrap gap-2">
+            {picker.sizes.map((s) => (
+              <button
+                key={s.size}
+                type="button"
+                disabled={s.quantity === 0}
+                onClick={() => {
+                  addDirect(picker, s.size);
+                  setPicker(null);
+                }}
+                className="min-w-16 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <span className="font-medium">{s.size}</span>
+                <span className="ml-1 text-xs text-gray-500">
+                  {s.quantity === 0 ? 'agotada' : `(${s.quantity})`}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
