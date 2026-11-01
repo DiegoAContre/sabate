@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
+  categories,
   db,
   exchangeRates,
   productSizes,
@@ -22,6 +23,7 @@ function reset() {
   db.delete(sales).run();
   db.delete(exchangeRates).run();
   db.delete(products).run();
+  db.delete(categories).run();
   db.delete(users).run();
   db.insert(users)
     .values({
@@ -41,11 +43,16 @@ function setRate(createdAt = new Date()) {
 }
 
 /** Product with a `sizes` map (size → quantity); total goes into products.stock. */
-function addProduct(name: string, price: number, sizes: Record<string, number>) {
+function addProduct(
+  name: string,
+  price: number,
+  sizes: Record<string, number>,
+  categoryId?: string,
+) {
   const total = Object.values(sizes).reduce((a, b) => a + b, 0);
   const [p] = db
     .insert(products)
-    .values({ name, price, stock: total })
+    .values({ name, price, stock: total, categoryId: categoryId ?? null })
     .returning()
     .all();
   for (const [size, quantity] of Object.entries(sizes)) {
@@ -191,6 +198,30 @@ describe('createSale', () => {
         paymentMethod: 'efectivo',
       }),
     ).rejects.toThrow(SaleError);
+  });
+
+  it('snapshots the product category on each line (null when it has none)', async () => {
+    reset();
+    setRate();
+    const [cat] = db
+      .insert(categories)
+      .values({ id: 'cat-camisas', name: 'Camisas' })
+      .returning()
+      .all();
+    const shirt = addProduct('Camisa', 250, { M: 5 }, cat.id);
+    const cafe = addProduct('Café', 100, { ÚNICA: 2 });
+
+    const { items } = await createSale({
+      userId: USER_ID,
+      items: [
+        { productId: shirt.id, size: 'M', quantity: 1 },
+        { productId: cafe.id, size: 'ÚNICA', quantity: 1 },
+      ],
+      paymentMethod: 'efectivo',
+    });
+
+    expect(items[0].category).toBe('Camisas');
+    expect(items[1].category).toBeNull();
   });
 
   it('converts the total to Bs at the snapshotted rate', () => {

@@ -77,6 +77,7 @@ if (process.env.NEXT_PHASE !== 'phase-production-build') {
   addColumn('sales', 'reference', 'reference text');
   addColumn('products', 'code', 'code text');
   addColumn('sale_items', 'size', 'size text');
+  addColumn('sale_items', 'category', 'category text');
   addColumn('stock_movements', 'size', 'size text');
 
   // Per-size stock; every product ends up with at least one size row.
@@ -108,6 +109,16 @@ if (process.env.NEXT_PHASE !== 'phase-production-build') {
         (stmt) => stmt.run([randomUUID(), row.id, row.stock, Date.now()]),
       );
     }
+  }
+
+  // Backfill: sales made before the category snapshot get the product's current
+  // category, so the whole history shows «Categoría - Nombre».
+  if (hasTable('categories')) {
+    sqlite.exec(`UPDATE sale_items SET category = (
+      SELECT c.name FROM products p
+      JOIN categories c ON c.id = p.category_id
+      WHERE p.id = sale_items.product_id
+    ) WHERE category IS NULL`);
   }
 }
 

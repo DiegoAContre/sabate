@@ -1,5 +1,6 @@
 import { and, eq, gte, sql } from 'drizzle-orm';
 import {
+  categories,
   db,
   productSizes,
   products,
@@ -63,6 +64,7 @@ export async function createSale({
       unitPrice: number;
       quantity: number;
       size: string;
+      category: string | null;
     }[] = [];
 
     for (const item of items) {
@@ -74,6 +76,16 @@ export async function createSale({
       if (!product || !product.isActive) {
         throw new SaleError('Producto no disponible');
       }
+
+      // Category snapshot — fetched separately: a joined select would return
+      // two "name" columns and this session's row objects can't tell them apart.
+      const category = product.categoryId
+        ? tx
+            .select()
+            .from(categories)
+            .where(eq(categories.id, product.categoryId))
+            .get()
+        : undefined;
 
       const size = normalizeSize(item.size);
       // Conditional decrement on the size: the guard and the write are one
@@ -103,6 +115,7 @@ export async function createSale({
         unitPrice: product.price,
         quantity: item.quantity,
         size,
+        category: category?.name ?? null,
       });
     }
 

@@ -19,7 +19,7 @@ the 2026-09-26 incident (see §Deploy).
 ### apps/pos structure
 
 ```
-db/schema.ts           # users, products (+code), product_sizes, categories, brands, sales, sale_items (+size), stock_movements (+size), exchange_rates (SQLite)
+db/schema.ts           # users, products (+code), product_sizes, categories, brands, sales, sale_items (+size, +category), stock_movements (+size), exchange_rates (SQLite)
 db/client.ts           # node-sqlite3-wasm + drizzle (no WAL, foreign_keys ON, startup additive migration + product_sizes backfill) — re-exports schema
 lib/token.ts           # edge-safe jose JWT sign/verify (used by middleware)
 lib/auth.ts            # getSession() via next/headers (re-exports token helpers)
@@ -28,7 +28,7 @@ lib/format.ts          # USD cents → "$ 1.234,56"; Bs via rate → "Bs 91.005,
 lib/tax.ts             # taxBreakdown(): IVA 16% / base imponible split (base + iva === total, Bs)
 lib/payment.ts         # PAYMENT_METHODS (incl. pago_movil) + labels + REFERENCE_METHODS
 lib/product.ts         # create/update product + per-size stock (receive/adjust, recompute total, movements)
-lib/sale.ts            # createSale() + voidSale(): totals, per-size stock, movements, rate snapshot, reference
+lib/sale.ts            # createSale() + voidSale(): totals, per-size stock, movements, rate + category snapshot, reference
 lib/day.ts             # Caracas day boundary (UTC−4, no DST) for reports and filters
 lib/report.ts          # summarize(): period totals + by day + by method (pure)
 lib/tags.ts            # categories/brands CRUD + guards (one code path, kind picks the table)
@@ -43,12 +43,12 @@ app/api/users/         # POST create seller; PATCH [id]: password / isActive (ow
 app/api/exchange-rate/ # POST the day's Bs/$ rate (owner)
 app/api/admin/backup/  # POST daily VACUUM INTO copy (owner session or BACKUP_TOKEN)
 app/pos-screen.tsx     # client: search (name/code) + grid + per-size picker + ticket + IVA breakdown + reference + Cobrar
-app/receipt.tsx        # printable ticket ($ + Bs, base imponible/IVA, tasa usada, método, referencia, talla)
+app/receipt.tsx        # printable customer-facing ticket ($ + Bs, base imponible/IVA, método, referencia, talla — no seller, no rate; líneas «Categoría - Nombre»)
 app/inventario/        # product table (code + per-size breakdown) + modals: create/edit/stock/deactivate (owner; seller read-only)
 app/inventario/clasificacion/  # categories + brands lists (owner): add, rename, delete
 app/inventario/stock-bajo/  # low-stock view (sellers too, read-only)
 app/ventas/            # sales list + day/method totals + date filter (owner)
-app/ventas/[id]/       # sale detail: lines, receipt reprint, «Anular venta» (owner)
+app/ventas/[id]/       # sale detail: lines («Categoría - Nombre»), receipt reprint, «Anular venta» (owner)
 app/usuarios/          # users: create seller, reset password, activate/deactivate (owner)
 app/tasa/              # daily rate: current + history + set new (owner)
 app/login/             # Spanish login screen
@@ -78,7 +78,12 @@ valid 12h from set — `lib/rate.ts`); sales snapshot the rate at sale time.
 `transferencia`, `pago_movil`, `cashea`, `otro`) with display labels and
 `REFERENCE_METHODS`; `transferencia`/`pago_movil` optionally store a bank
 `reference` on the sale (`sales.reference`, printed on the receipt and shown in
-the sale detail). **IVA is derived, never stored**: `lib/tax.ts` splits the Bs
+the sale detail); each `sale_items` row also snapshots the product's **category**
+(`sale_items.category`, null if it had none). Line labels everywhere — POS cart,
+sale detail, receipt — read «Categoría - Nombre», falling back to the name alone
+when there's no category. **The receipt is customer-facing**: it shows no seller
+and no exchange rate (the sale detail keeps both on screen as `no-print` cards).
+**IVA is derived, never stored**: `lib/tax.ts` splits the Bs
 total into base imponible + 16% IVA (`base = round(total·100/116)`,
 `iva = total − base`, so `base + iva === total`); both the pre-`Cobrar` ticket and
 the receipt/reprint show it. **A sale refuses to run without a valid rate** and is
@@ -105,8 +110,11 @@ to Drizzle's sync better-sqlite3 surface (single connection via `globalThis`,
 WAL** (journal `delete`); the VFS locks the DB via a `<db>.lock` directory, so no
 second process can open the file while the app runs; a stale lock after a crash
 blocks startup (next start / systemd removes it). `PRAGMA busy_timeout = 5000`
-keeps multiple in-process connections (dev's per-route bundles) from failing with
-SQLITE_BUSY. **Backups use a second in-process connection**
+keep multiple in-process connections (dev's per-route bundles) from failing with
+SQLITE_BUSY. **Joined selects that repeat a column name collapse here** — rows
+come back keyed by column name, so `products × categories` (both have `name`)
+loses one; resolve lookups with separate queries instead (see `lib/sale.ts`).
+**Backups use a second in-process connection**
 (`app/api/admin/backup`, cron via `BACKUP_TOKEN`) because `VACUUM INTO` fails
 while any of the live connection's statements is open, and an external process
 can't open the file at all. `next.config.ts` ships `output: 'standalone'` +
@@ -127,8 +135,9 @@ deployment does. **The additive changes that had to reach the live store DB** ar
 handled by an app-level, idempotent set of `ALTER TABLE … ADD COLUMN` /
 `CREATE TABLE … IF NOT EXISTS` in `apps/pos/db/client.ts` at startup (skipped
 during `next build`, where parallel route bundles race the VFS lock); that's how
-`sales.reference`, `products.code`, the `size` columns and `product_sizes`
-(backfilled with a «ÚNICA» row per legacy product) shipped without a migration
+`sales.reference`, `products.code`, the `size` columns, `product_sizes`
+(backfilled with a «ÚNICA» row per legacy product) and `sale_items.category`
+(backfilled with each product's current category) shipped without a migration
 tool.
 
 ## Commands
@@ -156,9 +165,9 @@ npm run test:db-setup       # one-time: build apps/pos/data/pos-test.db from the
 
 SQLite. Schema conventions: UUID primary keys (`crypto.randomUUID()`); money as
 integer cents; `products.stock` is a derived cache of the per-size sums; stock is
-non-negative via `CHECK`; sales keep a name/price/size snapshot; every stock
-change writes a `stock_movements` audit row; rows are deactivated/flagged, never
-hard-deleted (sales history).
+non-negative via `CHECK`; sales keep a name/price/size/category snapshot; every
+stock change writes a `stock_movements` audit row; rows are deactivated/flagged,
+never hard-deleted (sales history).
 
 ## Auth
 

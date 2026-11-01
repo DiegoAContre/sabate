@@ -1,4 +1,4 @@
-import { formatBsCents, formatRate, formatUsd } from '@/lib/format';
+import { formatBsCents, formatUsd } from '@/lib/format';
 import { paymentMethodLabel } from '@/lib/payment';
 import { taxBreakdown } from '@/lib/tax';
 
@@ -16,6 +16,7 @@ export interface ReceiptItem {
   quantity: number;
   unitPrice: number;
   size?: string | null;
+  category?: string | null;
 }
 
 const dateTime = new Intl.DateTimeFormat('es-VE', {
@@ -23,14 +24,14 @@ const dateTime = new Intl.DateTimeFormat('es-VE', {
   timeStyle: 'short',
 });
 
+// Customer-facing ticket: no seller and no exchange rate (the owner-only sale
+// detail keeps those on screen, marked no-print).
 export function Receipt({
   sale,
   items,
-  sellerName,
 }: {
   sale: ReceiptSale;
   items: ReceiptItem[];
-  sellerName: string;
 }) {
   const { baseBsCents, ivaBsCents, totalBsCents } = taxBreakdown(
     sale.total,
@@ -43,7 +44,6 @@ export function Receipt({
       <p className="text-center text-xs text-gray-600">
         {dateTime.format(new Date(sale.createdAt))}
       </p>
-      <p className="mt-1 text-xs text-gray-600">Vendedor: {sellerName}</p>
 
       <hr className="my-2 border-dashed" />
 
@@ -52,6 +52,7 @@ export function Receipt({
           {items.map((item, i) => (
             <tr key={`${item.productName}-${i}`}>
               <td className="py-0.5">
+                {item.category ? `${item.category} - ` : ''}
                 {item.productName}
                 <span className="text-gray-500"> × {item.quantity}</span>
                 {item.size && (
@@ -87,8 +88,7 @@ export function Receipt({
         </div>
       </div>
       <p className="mt-2 text-xs text-gray-600">
-        {paymentMethodLabel(sale.paymentMethod)} · tasa{' '}
-        {formatRate(sale.exchangeRate)} Bs/$
+        {paymentMethodLabel(sale.paymentMethod)}
       </p>
       {sale.reference && (
         <p className="text-xs text-gray-600">Referencia: {sale.reference}</p>

@@ -115,6 +115,8 @@ export const saleItems = sqliteTable(
     quantity: integer('quantity').notNull(),
     // Snapshot of the size sold (null for sales made before sizes existed).
     size: text('size'),
+    // Snapshot of the product's category at sale time (null if it had none).
+    category: text('category'),
   },
   (t) => [index('sale_items_sale_id_idx').on(t.saleId)],
 );

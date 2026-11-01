@@ -85,7 +85,11 @@ export default async function VentaDetailPage({
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="border-b border-gray-100">
-                  <td className="py-2">{item.productName}</td>
+                  <td className="py-2">
+                    {item.category
+                      ? `${item.category} - ${item.productName}`
+                      : item.productName}
+                  </td>
                   <td className="py-2 text-gray-600">{item.size ?? '—'}</td>
                   <td className="py-2">{item.quantity}</td>
                   <td className="py-2">{formatUsd(item.unitPrice)}</td>
@@ -113,11 +117,7 @@ export default async function VentaDetailPage({
       )}
 
       <div className="rounded border border-gray-200 bg-white p-6">
-        <Receipt
-          sale={sale}
-          items={items}
-          sellerName={row.userName ?? '—'}
-        />
+        <Receipt sale={sale} items={items} />
       </div>
 
       <div className="no-print mt-4">

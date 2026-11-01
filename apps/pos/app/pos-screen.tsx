@@ -20,6 +20,7 @@ interface Line {
   productId: string;
   size: string;
   name: string;
+  category: string;
   unitPrice: number;
   quantity: number;
 }
@@ -36,12 +37,10 @@ export function PosScreen({
   products,
   rate,
   isOwner,
-  sellerName,
 }: {
   products: CatalogProduct[];
   rate: CurrentRate | null;
   isOwner: boolean;
-  sellerName: string;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -91,6 +90,7 @@ export function PosScreen({
             productId: product.id,
             size,
             name: product.name,
+            category: product.category,
             unitPrice: product.price,
             quantity: 1,
           },
@@ -166,7 +166,7 @@ export function PosScreen({
           Venta registrada
         </div>
         <div className="rounded border border-gray-200 bg-white p-6">
-          <Receipt sale={sale.sale} items={sale.items} sellerName={sellerName} />
+          <Receipt sale={sale.sale} items={sale.items} />
         </div>
         <div className="no-print mt-4 flex gap-2">
           <button
@@ -277,6 +277,7 @@ export function PosScreen({
                     className="border-b border-gray-100"
                   >
                     <td className="px-3 py-2">
+                      {l.category ? `${l.category} - ` : ''}
                       {l.name}
                       <span className="ml-1 text-xs text-gray-500">
                         ({l.size})

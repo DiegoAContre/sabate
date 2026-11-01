@@ -38,7 +38,6 @@ export default async function HomePage() {
       }))}
       rate={rate}
       isOwner={session.role === 'owner'}
-      sellerName={session.name}
     />
   );
 }

@@ -184,10 +184,26 @@ shell y las tablas anchas tenían que aguantar 375 px.
   DB real (3 productos backfilled a «ÚNICA», `integrity_check: ok`), servicio
   activo, `/login` 200 y bundle nuevo confirmado.
 
+### Phase 8 — Factura: categoría y limpieza — DONE (2026-11-01)
+
+- **Snapshot de categoría**: `sale_items.category` se guarda en cada línea de la
+  venta (null si el producto no tiene categoría); migración de arranque + backfill
+  de las ventas viejas con la categoría actual del producto.
+- **Líneas «Categoría - Nombre»** en el detalle de `/ventas/[id]`, en la factura
+  (preview e impresión) y en el carrito del POS; sin categoría, solo el nombre.
+- **Factura orientada al cliente**: fuera «Vendedor» y «tasa … Bs/$» (quedan en
+  pantalla en el detalle como tarjetas `no-print`); se mantienen fecha, líneas
+  con talla, $ + Bs, base imponible/IVA, método, referencia y `Ticket id`.
+- **Gotcha**: un join `products × categories` devuelve dos columnas `name` y la
+  sesión de node-sqlite3-wasm (filas por nombre de columna) las colapsa — la
+  categoría se resuelve con una segunda query dentro de la transacción.
+- **Tests**: 32 en verde (snapshot con y sin categoría); E2E local verificado
+  (respuesta con categoría, detalle y factura renderizando «Categoría - Nombre»,
+  sin «Vendedor:» ni «tasa», fallback a solo nombre).
+
 ## Pendiente (planificar después)
 
 - **Correcciones de diseño** — por definir con el cliente.
-- **Impresión de la factura** — por definir con el cliente.
 
 ## Próximos pasos — mejorar el sistema de backups (IDEA, sin ejecutar)
 
