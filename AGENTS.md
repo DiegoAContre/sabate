@@ -222,3 +222,10 @@ Node 18 (`/usr/bin/node`), no git/build on the box.
   `sudo install -m 644 /var/lib/sabate-pos/pos.db ~/…`.
 - **Accepted risk**: plain HTTP on the store LAN (no TLS without a domain) — the
   session cookie is sniffable on-LAN. Fine for a small store.
+
+## Git
+
+**Never commit, amend, or push** — the owner reviews and handles git manually.
+Leave every change uncommitted in the working tree and end the task with a short
+report of what changed; if a commit is ever explicitly requested, confirm first.
+
