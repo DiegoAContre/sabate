@@ -44,7 +44,7 @@ app/api/exchange-rate/ # POST the day's Bs/$ rate (owner)
 app/api/admin/backup/  # POST daily VACUUM INTO copy (owner session or BACKUP_TOKEN)
 app/pos-screen.tsx     # client: search (name/code) + grid + per-size picker + ticket + IVA breakdown + reference + Cobrar
 app/receipt.tsx        # printable customer-facing ticket ($ + Bs, base imponible/IVA, método, referencia, talla — no seller, no rate; líneas «Categoría - Nombre»)
-app/inventario/        # product table (code + per-size breakdown) + modals: create/edit/stock/deactivate (owner; seller read-only)
+app/inventario/        # product table (search nombre/código/marca/categoría, sortable headers, code + per-size breakdown) + modals: create/edit/stock/deactivate (owner; seller read-only)
 app/inventario/clasificacion/  # categories + brands lists (owner): add, rename, delete
 app/inventario/stock-bajo/  # low-stock view (sellers too, read-only)
 app/ventas/            # sales list + day/method totals + date filter (owner)

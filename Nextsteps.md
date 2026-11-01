@@ -201,6 +201,20 @@ shell y las tablas anchas tenían que aguantar 375 px.
   (respuesta con categoría, detalle y factura renderizando «Categoría - Nombre»,
   sin «Vendedor:» ni «tasa», fallback a solo nombre).
 
+### Phase 9 — Búsqueda y orden en inventario — DONE (2026-11-01)
+
+- **Búsqueda** en `/inventario` con form GET (`?q=`) estilo `/ventas`: nombre,
+  código, marca o categoría (mismo criterio que el POS), case-insensitive, con
+  «Buscar», «Limpiar» y contador de resultados; el form conserva el orden activo.
+- **Orden por columnas** Nombre, Categoría, Marca y Estado: headers como links
+  `?sort=…&dir=…` (primer click asc, siguiente invierte), indicador ▲/▼,
+  whitelist server-side, default nombre asc y links que preservan `q`.
+- **Implementado en la página** (fetch completo + filtro/orden en memoria): evita
+  el gotcha del join `products × categories` con dos columnas `name`. Sirve igual
+  al vendedor (solo lectura). E2E local verificado (default, orden asc/desc por
+  categoría y nombre, búsqueda por nombre/código/marca, sin resultados, params
+  inválidos → default).
+
 ## Pendiente (planificar después)
 
 - **Correcciones de diseño** — por definir con el cliente.
