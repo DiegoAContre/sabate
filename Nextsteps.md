@@ -1,405 +1,221 @@
-# Next steps (in suggested order)
+# Next steps
 
-> **Priority changed (2026-09-20): the POS is the active workstream.** Sections 1–5
-> below are the (paused) e-commerce track. POS phases live in §6 and are updated as
-> each phase ships.
+> **El POS es el único track activo.** El e-commerce (apps/web, apps/api,
+> packages/db) se eliminó del repo; su historial queda en git. Acá viven el
+> estado del POS y lo que falta.
 
-## 1. Stripe end-to-end pass — DONE (2026-09-06)
+## POS local — estado
 
-Verified: test payment with `4242…` card → `checkout.session.completed` delivered
-`[200]` to the API, order flipped `pending → paid`, payment intent stored, cart
-cleared, stock decremented, no inventory flag. `STRIPE_WEBHOOK_SECRET` in
-`apps/api/.env` confirmed correct against the `stripe listen` session.
-
-- Idempotency proved end to end (2026-09-11): `stripe events resend evt_3UClKb…`
-  → `[200]`, order stayed `paid` (no status flip), Test Product stock stayed **9**,
-  `inventory_issue` unchanged, cart untouched — the real-world mirror of the
-  duplicate-delivery test in `tests/checkout.test.ts`. Listener stopped afterwards.
-- Note: `stripe listen` reused the same signing secret across sessions, so
-  `STRIPE_WEBHOOK_SECRET` in `apps/api/.env` stays valid. If a future session prints a
-  different `whsec_…`, update the env var and restart the API (nodemon won't reload it).
-
-## 2. Admin panel UX (modals + product edit fixes)
-
-Issues found while testing the Stripe flow. Shared piece first:
-
-- DONE: **`apps/web/app/admin/modal.tsx`** — native `<dialog>` based `Modal` +
-  `ConfirmDialog` (title, message, confirm/cancel, danger styling, loading state,
-  inline error text). Errors render inside the modal instead of browser popups.
-
-### Users — DONE
-
-- DONE: role select opens the shared ConfirmDialog ("Change role of {name} from
-  "x" to "y"?") → PATCH `{ role }` on confirm; Cancel reverts the dropdown
-  (`roleChange ?? user.role`, fully controlled); picking the current role is a no-op.
-- DONE: Deactivate/Activate opens a confirm modal (danger styling when deactivating,
-  with a "no longer able to sign in" warning) → PATCH `{ isActive }`.
-- Both paths render errors inline in the modal (backend self-guard 400 included).
-- Modal click-through is manual.
-
-## 2. Admin panel UX — COMPLETE
-
-All four screens wired to the shared `<dialog>` modals: product delete, category
-edit + delete, order status change, user role + active status.
-
-### Products — DONE
-
-- DONE: per-row **Edit** button (bordered) next to a red-bordered **Delete** button —
-  Edit goes to the existing `/admin/products/[slug]` page (prefilled `ProductForm` +
-  `PUT /api/admin/products/:id`).
-- DONE (API fix): `productSchema.compareAtPrice` accepts `null`
-  (`.nullable()` short-circuits before zod coercion — verified) — the form's empty
-  compare-at field no longer 400s on save.
-- DONE (API fix): `updateProduct` is now true full-replace — description,
-  `compareAtPrice` and `categoryId` can be cleared (previously `?? existing`
-  silently kept old values). Verified by curl: clear + restore round-trip.
-- DONE: Delete uses the shared ConfirmDialog (danger) with the product name;
-  failures render inside the modal.
-
-### Categories — DONE
-
-- DONE: per-row **Edit** button → shared `Modal` with prefilled name/slug/parent
-  (parent select excludes the category itself, matching the service rule) →
-  `PUT /api/admin/categories/:id`. Verified: rename round-trip 200, self-parent 400.
-- DONE: Delete uses the shared ConfirmDialog (danger) with the category name; the
-  backend's "Cannot delete category with subcategories or products…" renders inline
-  in the modal.
-- Known limitation (backend pre-existing): only self-parenting is blocked — deeper
-  parent cycles are technically possible. Add an ancestor-chain check in
-  `updateCategory` if it ever matters.
-
-### Orders — DONE
-
-- DONE: status select opens the shared ConfirmDialog ("Change status from X to Y?") →
-  PATCH `{ status }` on confirm; Cancel/ESC reverts the dropdown (select value is
-  `confirmStatus ?? status`, fully controlled). Errors render inline in the modal.
-  Picking the current status is a no-op. "Mark resolved" stays one-click with `alert()`
-  errors (by choice).
-
-### Verify
-
-- Slice 1 (products): typecheck; curl PUT clearing `compareAtPrice` + `categoryId` →
-  200 + DB nulls (restored after); `/admin/products` renders with buttons + modal.
-- Slice 2 (categories): curl rename round-trip 200/200, self-parent 400; page renders.
-- Slice 3 (orders): typecheck; `/admin/orders` renders with dialog; modal
-  click-through manual.
-- `npm run typecheck`.
-
-## 3. Automated tests — DONE (2026-09-09)
-
-`vitest` in `apps/api`, 22 tests green (`npm run test`). They run against a dedicated
-`sabate_test` database (same docker container; `npm run test:db-setup` creates it and
-pushes the schema — dotenv never overrides pre-set env vars, so `tests/setup.ts`
-repoints `DATABASE_URL` cleanly). Files run strictly sequentially
-(`fileParallelism: false`) so truncations can't race.
-
-- `tests/checkout.test.ts`: webhook idempotency (atomic claim, stock decremented
-  exactly once), oversold flag (`inventory_issue=true`, stock untouched),
-  `products_stock_non_negative` CHECK (23514), checkout 409 on over-stocked cart,
-  cart-empty 400, Stripe-less 503 creates **no orphan orders**.
-- `tests/auth.test.ts`: register/duplicate 409, login ok/401/disabled, password
-  change round-trip.
-- `tests/cart.test.ts`: add/list, stock-clamped add + update, product availability
-  guards, remove 404 on repeat, clear.
-
-Scope note: services-level only — no HTTP layer (no supertest); the zod validators
-plus Express 5 error flow stay hand-verified. Tests are not in `tsc`'s `include`
-(rootDir constraint) — vitest surfaces those errors at runtime.
-
-## 4. Deployment checklist
-
-The app has never run in production mode.
-
-- Prod `.env` values on the EC2 (real `JWT_SECRET`, `CORS_ORIGIN`, Stripe live keys).
-- PM2 startup + logs, nginx vhosts for ports 3000/3001, HTTPS cert.
-- `npm run seed` on prod DB with `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` from env.
-- Smoke: register, buy (live mode test card first), webhook received.
-
-## 5. UX polish (optional)
-
-- Cart item-count badge in the navbar.
-- Order confirmation email (needs an email provider — real scope, plan first).
-- Admin order detail page (skipped by choice — list page covers it for now).
-
-## 6. POS local (inventario y ventas) — ACTIVE
-
-Standalone system for the store, **two-PC model**: a headless Debian 12 server
-(low RAM) runs the app; staff use Firefox from client machines at
-`http://<server-ip>`. `apps/pos`, Spanish UI, own SQLite catalog/stock —
-separate from the e-commerce DB. Roles: `owner` (todo) and `seller`
-(POS + stock-bajo). Payment methods: efectivo, tarjeta, transferencia, cashea,
-otro. Selling more than book stock blocks with "Stock insuficiente" (owner
-adjusts via `Ajuste`). **Deploy after phase 4** (features churn until then;
-redeploy = one script once systemd exists).
+Sistema standalone para la tienda, **modelo de dos PCs**: un servidor Debian 12
+headless (poca RAM) corre la app; el personal usa Firefox desde las cajas en
+`http://<ip-del-server>`. Todo vive en `apps/pos`, UI en español, catálogo y stock
+propios en SQLite. Roles: `owner` (todo) y `seller` (POS, stock-bajo y el
+inventario completo en solo lectura). Métodos de pago: efectivo, tarjeta,
+transferencia, pago móvil, cashea y otro (`transferencia`/`pago_movil` guardan una
+referencia opcional). Vender más que la existencia bloquea con «Stock
+insuficiente» (el dueño ajusta con `Ajuste`).
 
 ### Phase 1 — Scaffold + DB + auth — DONE (2026-09-20)
 
-- Next.js 15 + Tailwind 4 (same versions as apps/web), API route handlers,
-  better-sqlite3 v12 (Node 26 needs the v12 prebuilds; allowScripts approved) +
-  Drizzle. DB at `data/pos.db`, WAL + foreign_keys ON.
+- Next.js 15 + Tailwind 4, API route handlers, Drizzle. La DB arrancó sobre
+  better-sqlite3 y luego se pasó a `node-sqlite3-wasm` (ver Phase 5).
 - Schema: users, products (CHECK stock >= 0), sales, sale_items (name/price
-  snapshot), stock_movements (audit for venta/recepcion/ajuste).
-- Auth: login/logout route handlers, jose JWT in httpOnly cookie (30d),
-  `middleware.ts` gate — `/login` + `/api/auth/*` public, everything else
-  authenticated, `/inventario`, `/ventas`, `/usuarios` owner-only (stock-bajo
-  allowed for sellers).
-- Seed: owner from `SEED_OWNER_USERNAME`/`SEED_OWNER_PASSWORD` (fail-fast, min 8).
-- Verified: login wrong/right, redirects with/without session, seller blocked
-  from owner routes, logout clears session, typecheck OK.
+  snapshot), stock_movements (auditoría de venta/recepción/ajuste).
+- Auth: login/logout route handlers, jose JWT en cookie httpOnly (30d),
+  `middleware.ts` — `/login` + `/api/auth/*` públicos, el resto autenticado,
+  `/inventario`, `/ventas`, `/usuarios` solo dueño (stock-bajo para vendedores).
+- Seed: dueño desde `SEED_OWNER_USERNAME`/`SEED_OWNER_PASSWORD` (fail-fast, min 8).
+- Verificado: login mal/bien, redirects con/sin sesión, vendedor bloqueado de
+  rutas de dueño, logout limpia la sesión, typecheck OK.
 
-### Phase 2 — Inventory + daily rate — DONE (2026-09-20)
+### Phase 2 — Inventario + tasa del día — DONE (2026-09-20)
 
-- **Schema**: new `exchange_rates` (append-only, `bs_per_usd` integer céntimos de
-  Bs per USD, who set it) + `sales.exchange_rate` snapshot column (added now so
-  phase 3 needs no migration). SQLite can't ALTER ADD a NOT NULL column — the
-  empty sales tables were dropped and recreated; drizzle-kit introspection wedged
-  against the live dev server/WAL afterwards → **stop the dev server before
-  `db:push -w apps/pos`** (documented in AGENTS.md).
-- **Rate model** (client decision): prices are USD; Bs is derived from the day's
-  rate; a rate is **valid 12 hours** from when it was set (`lib/rate.ts`) — the
-  POS will refuse to sell on a stale/missing rate. `/tasa` (owner): current rate +
-  validity badge + history; `POST /api/exchange-rate` appends.
-- **Inventory** (`/inventario`, owner): table with $ and Bs columns (Bs at current
-  rate), stock red when ≤ threshold; modals — Nuevo producto (initial stock writes
-  a `recepcion` movement), Editar, **Stock** (Recepción = +N / Ajuste = set
-  counted total, delta auto-computed), Desactivar/Activar confirm. Products are
-  deactivated, never deleted. Shared `app/modal.tsx` (native `<dialog>`, ESC-safe).
-- **Stock bajo** (`/inventario/stock-bajo`, sellers too): active products at/below
-  threshold, read-only.
-- **Gotcha found**: drizzle better-sqlite3 transactions are synchronous — async
-  callbacks throw "cannot return a promise" AND can leave committed rows (a
-  phantom product survived a rolled-back-looking 500). All handlers use
-  `.all()`/`.get()`/`.run()` sync patterns now; documented in AGENTS.md.
-- **Verified**: typecheck; curl — create (201 + movement), recepción +3, ajuste
-  set-7 (delta -6 recorded), PATCH price/deactivate, seller 403 on all mutations,
-  GET allowed; movements cascade; rate POST (9.100,50 → 910050); pages render
-  (inventario empty state, tasa "Válida" badge, stock-bajo for seller); seller
-  redirected from /inventario and /tasa.
+- **Schema**: `exchange_rates` (append-only, `bs_per_usd` en céntimos de Bs, quién
+  la fijó) + `sales.exchange_rate` (snapshot). SQLite no permite ALTER ADD NOT
+  NULL, así que las tablas de ventas vacías se recrearon; drizzle-kit se trabó
+  contra el server dev → **parar el dev server antes de `db:push -w apps/pos`**.
+- **Modelo de tasa**: precios en USD; los Bs se derivan de la tasa del día; una
+  tasa vale **12 horas** (`lib/rate.ts`) — el POS se niega a vender con tasa
+  vencida o inexistente. `/tasa` (dueño): actual + vigencia + historial;
+  `POST /api/exchange-rate` agrega.
+- **Inventario** (`/inventario`, dueño): tabla con $ y Bs, stock en rojo al llegar
+  al umbral; modales — Nuevo producto (stock inicial deja movimiento
+  `recepcion`), Editar, **Stock** (Recepción = +N / Ajuste = total contado, delta
+  automático), Desactivar/Activar. Los productos se desactivan, nunca se borran.
+  `app/modal.tsx` compartido (native `<dialog>`, ESC-safe).
+- **Stock bajo** (`/inventario/stock-bajo`, también vendedores): productos activos
+  en o bajo el umbral, solo lectura.
+- **Gotcha**: las transacciones de drizzle con better-sqlite3 son sincrónicas —
+  los callbacks `async` lanzan y pueden dejar filas commiteadas. Todos los
+  handlers usan `.all()`/`.get()`/`.run()`.
+- **Verificado**: typecheck; curl — alta (201 + movimiento), recepción +3, ajuste
+  set-7 (delta −6), PATCH precio/desactivar, vendedor 403 en mutaciones y GET
+  permitido; páginas renderizan; vendedor redirigido de /inventario y /tasa.
 
-### Phase 3 — POS sale screen — DONE (2026-09-21)
+### Phase 3 — Pantalla de venta — DONE (2026-09-21)
 
-- **Screen** (`/`, owner and seller): search by name/SKU, product grid (click
-  adds; disabled at "Sin stock"), ticket with qty −/+ y quitar, total in **$ y
-  Bs**, método de pago (efectivo/tarjeta/transferencia/cashea/otro) y `Cobrar`.
-  Success panel shows the receipt (browser print via `window.print()`, print CSS
-  hides nav/buttons) + «Nueva venta»; `router.refresh()` reloads stock levels.
-- **Sale API** `POST /api/sales` (any logged-in role): zod-validated; prices and
-  the total are computed **inside** the DB transaction from catalog prices; the
-  rate is re-checked server-side; conditional decrement
-  (`WHERE stock >= qty`) + one `stock_movements` row per line (`venta`).
-- **Rules enforced**: no sale without a valid (non-expired) rate → 409 (POS
-  banner: owner gets «Actualizar tasa», seller sees «Avisa al propietario»); a
-  line without stock refuses the whole ticket (409, no partial writes);
-  inactive product → 409.
-- **Tests**: `apps/pos/tests/sale.test.ts` (vitest, `data/pos-test.db`) covers
-  total-from-DB-prices + rate snapshot + stock decrement + movements, refusal
-  with rollback (nothing written), expired rate, no rate, and Bs conversion.
-- **Verified**: 5 pos + 22 api tests, typecheck clean; curl — happy sale (total
-  computed from DB, rate snapshot) with stock decremented + `venta` movements,
-  oversell 409 with zero partial writes, seller sale 201, no-cookie 401, bad
-  payload 400, inactive product 409; renders for both roles incl. stale-rate
-  banner. **Manual check left**: Firefox print preview of the ticket.
+- **Pantalla** (`/`, dueño y vendedor): búsqueda por nombre/código/marca/categoría,
+  grilla (click agrega; deshabilitado en «Sin stock»), ticket con cantidad −/+ y
+  quitar, total en **$ y Bs**, método de pago y `Cobrar`. Al cobrar muestra el
+  recibo (impresión del navegador vía `window.print()`) + «Nueva venta»;
+  `router.refresh()` recarga existencias.
+- **API de venta** `POST /api/sales` (cualquier rol logueado): zod; precios y
+  total se calculan **dentro** de la transacción desde el catálogo; la tasa se
+  revalida en el servidor; decremento condicional por talla y un
+  `stock_movements` por línea (`venta`).
+- **Reglas**: sin tasa válida no hay venta → 409 (el POS avisa «Actualizar tasa»
+  al dueño y «Avisa al propietario» al vendedor); una línea sin stock rechaza todo
+  el ticket (409, sin escrituras parciales); producto inactivo → 409.
+- **Tests**: `apps/pos/tests/sale.test.ts` contra `data/pos-test.db`.
+- Decisiones (cliente): solo método de pago (sin vuelto); sin escáner; recibo
+  mínimo (nombre, fecha, vendedor, líneas, $ + Bs, tasa, método, id corto, talla).
 
-Decisions (client): payment method only (no vuelto); no barcode/scanner (plain
-search + click); minimal receipt (name, date, seller, lines, $ + Bs, rate,
-method, short id — no RIF/correlativo); voiding a sale → phase 4.
+### Phase 4 — Historial de ventas + usuarios — DONE (2026-09-21)
 
-### Phase 4 — Sales history/report + users — DONE (2026-09-21)
-
-- **/ventas (owner)**: filter by date range (native `<input type="date">`, plain
-  GET form → query params, «Hoy» resets), summary card (total del período in $
-  and Bs, cantidad de ventas, anuladas), breakdown **by day** and **by payment
-  method**, and the sales list (fecha, vendedor, método, $ + Bs, estado) capped
-  at 500 rows for the period.
-- **Numbers**: `lib/day.ts` cuts the day at **America/Caracas** (UTC−4, no DST)
-  so dev and the store server agree; `lib/report.ts::summarize()` is a pure
-  function that converts each sale at **its own snapshotted rate** (totals match
-  the printed tickets) and **leaves voided sales out of every total**.
-- **/ventas/[id]**: lines (producto, cantidad, precio, subtotal), tasa usada,
-  the printable receipt (reuses `app/receipt.tsx`) and **«Anular venta»**
-  (ConfirmDialog → repone stock + `anulacion` movement + marca la venta; la fila
-  nunca se borra). Shows «Anulada el …» when already void.
-- **/usuarios (owner)**: create sellers (usuario, nombre, contraseña ≥8),
-  reset password, activate/deactivate. Users are **never deleted** (sales
-  history); you can't deactivate yourself, and the last active owner is kept.
-- **Guards**: `/ventas/*` added to the owner-only middleware rule (a seller could
-  previously open a sale detail); void + users APIs check `owner` in the handler.
-- **Schema**: `sales.voided_at` / `sales.voided_by`, plus `anulacion` in
-  `stock_movements.reason`. Applied with a hand-written `ALTER TABLE` — see the
-  drizzle-kit note in AGENTS.md (push can't evolve an existing SQLite DB here;
-  fresh DBs, i.e. deployment, are fine).
-- **Tests** (13 in apps/pos): void restocks + flags + `anulacion` movement +
-  keeps the row, double void refuses, Caracas day boundary/range grouping,
-  summarize totals (own rate per sale, voided excluded), Bs conversion.
-- **Verified**: typecheck + `next build` clean (all routes dynamic); curl —
-  create seller 201, duplicate 409, short password 400, seller 403; reset
-  password then **login with the new one** (old one stops working); deactivate →
-  login 401 → activate → login 200; self-deactivation 400; unknown user 404;
-  sale → stock 7→5 → void → 7 with `anulacion` +2 and the sale flagged; void
-  twice 409, unknown 404, seller 403, no cookie 401; /ventas totals
-  ($ 6,50 / Bs 59.800,00, 2 ventas, 1 anulada) exclude the voided sale; empty
-  range shows the empty state; detail renders; seller redirected from /ventas,
-  /ventas/[id] and /usuarios. **Manual check left**: print preview of a
-  reimpresión.
+- **/ventas (dueño)**: filtro por rango de fechas (form GET, «Hoy» resetea),
+  resumen del período en $ y Bs, cantidad de ventas y anuladas, desglose **por
+  día** y **por método**, y la lista (fecha, vendedor, método, $ + Bs, estado,
+  tope 500 filas).
+- **Números**: `lib/day.ts` corta el día en **America/Caracas** (UTC−4, sin DST);
+  `lib/report.ts::summarize()` convierte cada venta a **su propia tasa
+  snapshoteada** (cuadra con los tickets) y **deja fuera las anuladas**.
+- **/ventas/[id]**: líneas (producto, cantidad, precio, subtotal), tasa usada, el
+  recibo imprimible (reusa `app/receipt.tsx`) y **«Anular venta»** (repone stock +
+  movimiento `anulacion` + marca la venta; la fila nunca se borra).
+- **/usuarios (dueño)**: crear vendedores, resetear contraseña, activar/desactivar.
+  Los usuarios nunca se borran; no podés desactivarte a vos mismo y se conserva el
+  último dueño activo.
+- **Guards**: `/ventas/*` en la regla owner-only del middleware; anular y usuarios
+  revalidan el rol en el handler.
+- **Schema**: `sales.voided_at`/`voided_by` + `anulacion` en
+  `stock_movements.reason`, aplicado con `ALTER TABLE` a mano (ver gotcha de
+  drizzle-kit en AGENTS.md).
 
 ### Phase 4b — Categorías y marcas — DONE (2026-09-23)
 
-SKU desaparece; en su lugar el producto tiene **categoría y marca, ambas
-opcionales**, elegidas siempre de una lista (nunca escritas a mano):
+- **Tablas** `categories` y `brands` (+ `products.category_id`/`brand_id`,
+  nullable). `lib/tags.ts` concentra las reglas y un mapa
+  `kind → (tabla, columna FK)`.
+- **Guards**: nombre único ignorando mayúsculas/espacios (409); **no se puede
+  borrar un valor en uso** (409) — se renombra; ids inexistentes o del tipo
+  equivocado dan 404/400, nunca un 500 del FK.
+- **`/inventario/clasificacion`**: dos secciones con lista, agregar, renombrar y
+  eliminar con confirmación.
+- **Producto**: los modales cambian el input SKU por dos `<select>`; el inventario
+  muestra ambas columnas; el POS busca por nombre/marca/categoría.
+- **Tests**: `tests/tags.test.ts` (alta, duplicado case-insensitive, renombrar +
+  choque, 404 al borrar inexistente, borrar en uso vs libre).
 
-- **Tablas** `categories` y `brands` (+ `products.category_id` / `brand_id`,
-  nullable). `lib/tags.ts` concentra las reglas y un mapa `kind → (tabla, columna
-  FK)` para no escribir el CRUD dos veces.
-- **Guards**: nombre único ignorando mayúsculas y espacios (409 «Ya existe»);
-  **no se puede eliminar un valor que usa un producto** (409 «En uso por N
-  productos») — se renombra; un id que no existe o del tipo equivocado da
-  404/400, no un 500 del FK.
-- **`/inventario/clasificacion`** (owner, bajo `/inventario/` así que el
-  middleware ya la protege): dos secciones con lista, agregar, renombrar y
-  eliminar con confirmación. Link en el nav y en la cabecera de Inventario.
-- **Producto**: los modales de alta/edición cambian el input SKU por dos
-  `<select>` («Sin categoría» / «Sin marca»); el inventario muestra las dos
-  columnas; el POS **busca por nombre, marca o categoría** y la tarjeta muestra
-  la marca.
-- **Migración**: tablas nuevas + `ALTER TABLE products ADD COLUMN …` a mano y
-  `DROP COLUMN sku` (SQLite 3.53; `sale_items` sólo guardaba nombre y precio, no
-  hay pérdida de historial). El test DB se recreó con `test:db-setup`.
-- **Tests**: `tests/tags.test.ts` (5) — alta, duplicado case-insensitive,
-  renombrar + choque, 404 al borrar lo que no existe, borrar en uso vs libre.
-- **Verificado**: typecheck + `next build` limpios, 18 tests POS + 22 api; curl —
-  201/409/404/400 en las rutas de tags, producto con y sin categoría+marca, id
-  inválido 400, seller 403 en escritura y redirigido de la página; render de
-  `/inventario` (columnas nuevas), `/inventario/clasificacion` y `/`.
+### Phase 5 — Deploy en Debian (dos PCs) — DONE (2026-09-25)
 
-### Phase 5 — Debian deployment (two-PC model) — DONE (2026-09-25)
+Server Debian 12 headless, **poca RAM** (Atom N270 de 32 bits, 988 MB + 1 GB swap),
+sin git/build en la caja → se sube un bundle standalone precompilado.
 
-Server: headless Debian 12, **low RAM** (32-bit Atom N270, 988 MB + 1 GB swap),
-no git/build on the box → we ship a pre-built standalone bundle. Clients:
-Firefox at the server IP.
-
-- `output: 'standalone'` in `apps/pos/next.config.ts` plus
-  `serverExternalPackages: ['node-sqlite3-wasm']` and `outputFileTracingIncludes`
-  for the `.wasm` (the driver loads it from disk at runtime, so tracing misses it
-  otherwise) → `.next/standalone/` (`server.js` + pruned node_modules incl. the
-  `.wasm`). **Engine is `node-sqlite3-wasm`, not better-sqlite3**: the server is
-  i686 (no `lm` flag), so there are no x64 prebuilds and better-sqlite3 can't
-  run there; the WASM driver is arch-neutral — verified the same standalone
-  bundle runs on Node 18.20.4 (bookworm i386 stock). **Standalone gotcha**: the
-  tar must be made of the **whole `.next/standalone/` root** (`apps/` +
-  `node_modules/` together — `node_modules` lives one level above `apps/pos`),
-  and `WorkingDirectory` must be `/opt/sabate-pos/apps/pos`; the `.env`/`data/`
-  folders that the build hoists into `apps/pos/` are `--exclude`d from the tar
-  (the systemd unit's `Environment=` supplies everything).
-- **deploy.sh**: `npm run build` → copy `.next/static` into the standalone →
-  tar (root of standalone) → `sudo tar --no-same-owner -xzf - -C /opt/sabate-pos`
-  over SSH (`--no-same-owner` so files land `root:root`, and the dev's uid never
-  leaks onto the box) → `sudo systemctl restart sabate-pos` → smoke.
-  **It never touches the server DB unless you pass `INIT_DB=1`**: with that flag
-  it builds the initial DB (applies `drizzle/*.sql` with a one-off
-  `node-sqlite3-wasm` script, seeds the owner `SEED_OWNER_*`, default
-  `admin`/`sabate8718`) and `install -o pos -g pos -m 600`s it to
-  `/var/lib/sabate-pos/pos.db`. With `BACKUP_TOKEN=…` it hits
-  `/api/admin/backup` **before** uploading — worth doing always, because the
-  03:00 cron silently produces no backup for any day the box is off at 03:00.
-- **setup-server.sh** (idempotent, one-time, run as root on the box): installs
-  nodejs/sudo/rsync/curl/ufw, creates the 1 GB swap + fstab entry, `pos` system
-  user, `/etc/sudoers.d/pos-deploy` (NOPASSWD only for the exact tar/install/
-  systemctl commands deploy.sh needs), systemd unit, daily cron backup, and
-  ufw. Secrets (`AUTH_SECRET`, `BACKUP_TOKEN`) are `openssl rand` generated and
-  kept in `/var/lib/sabate-pos/.env` (root-readable only) — **never in the
-  repo**.
-- **Server layout** (verified after a full reboot): systemd `sabate-pos.service`
-  `enabled`, `User=pos`, `WorkingDirectory=/opt/sabate-pos/apps/pos`,
-  `PORT=80` + `HOSTNAME=0.0.0.0` + `AmbientCapabilities=CAP_NET_BIND_SERVICE`,
-  `ExecStartPre` removes a stale `<db>.lock` (WASM VFS lock) → boots clean after
-  reboot. ufw: `deny incoming` + allow 22/80 from `192.168.100.0/24`. Cron daily
-  (03:00) backs up with `x-backup-token`.
-- **Middleware fix found during deploy**: `/api/admin/backup` was behind the
-  auth gate, so the cron's `x-backup-token` never reached the route (401). Now
-  the backup path is an explicit bypass and the route validates the token
-  itself.
-- **Backups**: the VFS deletes WAL and locks the DB with a `<db>.lock`
-  directory, so no **external** process can open the file (`sqlite3 .backup` /
-  `VACUUM INTO` from cron both fail) — the route `POST /api/admin/backup`
-  (owner session or `x-backup-token: $BACKUP_TOKEN`) is the only working
-  option: it uses a **second in-process connection** to `VACUUM INTO …` after
-  every statement is finalized (verified: copy opens clean, 30-day retention in
-  `BACKUP_DIR`, prune built in).
-- **Deploy verification passed**: `npm run typecheck` clean; curl over the wire
-  — login 200, `/login` 200, rate `{"rate": 9200.5}` → 201, product 201, sale
-  201 (total from DB $, Bs at snapped rate), void 200 (stock 7→5→7), backup via
-  token 200 (file valid), **full `shutdown -r now` reboot → service comes back
-  `active (running)` automatically**, login/page/backup all 200 after boot.
-- **Accepted risk**: plain HTTP on the store LAN (no TLS without a domain) — the
-  session cookie is sniffable on-LAN. Fine for a small store; revisit only if
-  it ever matters.
-- **Incident 2026-09-26 (own goal, now impossible)**: the deploy used to seed
-  the DB whenever `test -f /var/lib/sabate-pos/pos.db` failed over SSH — but
-  that test runs as `mirlaac`, who cannot traverse `/var/lib/sabate-pos` (700
-  `pos:pos`), so it **always** failed and every deploy dropped a fresh empty DB
-  on top of the live one. The 2026-09-26 UI deploy did exactly that; the only
-  restorable snapshot was `pos-2026-09-25.db` (restored, still empty of
-  catalog). Rule: never decide anything about `/var/lib/sabate-pos` from a
-  `mirlaac` shell — the deploy must default to "don't touch the DB", which it
-  now does (`INIT_DB=1`).
+- `output: 'standalone'` + `serverExternalPackages: ['node-sqlite3-wasm']` +
+  `outputFileTracingIncludes` para el `.wasm`. **Motor `node-sqlite3-wasm`, no
+  better-sqlite3**: la caja es i686 y no hay prebuilds; el WASM es neutral de
+  arquitectura — verificado en Node 18.20.4. El tar se hace de la **raíz de
+  `.next/standalone/`** (`apps/` + `node_modules/` juntos) y el `WorkingDirectory`
+  es `/opt/sabate-pos/apps/pos`.
+- **deploy.sh**: build → copia `.next/static` al standalone → tar → `sudo tar
+  --no-same-owner -xzf - -C /opt/sabate-pos` → `sudo systemctl restart
+  sabate-pos` → smoke. **Nunca toca la DB salvo `INIT_DB=1`**; con `BACKUP_TOKEN`
+  respalda **antes** de subir.
+- **setup-server.sh** (idempotente, una vez, root): nodejs/sudo/rsync/curl/ufw,
+  swap de 1 GB, usuario `pos`, `/etc/sudoers.d/pos-deploy` (solo tar/install/
+  systemctl), unidad systemd, cron de backup y ufw. Secretos
+  (`AUTH_SECRET`, `BACKUP_TOKEN`) via `openssl rand` en `/var/lib/sabate-pos/.env`
+  (solo root) — **nunca en el repo**.
+- **Layout verificado tras reboot**: `sabate-pos.service` `enabled`, `User=pos`,
+  `PORT=80` + `HOSTNAME=0.0.0.0` + `CAP_NET_BIND_SERVICE`, `ExecStartPre` borra un
+  `pos.db.lock` viejo. DB en `/var/lib/sabate-pos/pos.db`; backups en
+  `/var/lib/sabate-pos/backups/`; ufw permite 22/80 solo desde
+  `192.168.100.0/24`.
+- **Backups**: el VFS bloquea la DB con `<db>.lock`, así que ningún proceso
+  externo puede abrirla — la única vía es `POST /api/admin/backup` (sesión de
+  dueño o `x-backup-token`), que usa una **segunda conexión in-process** para
+  `VACUUM INTO` y poda a 30 días.
+- **Riesgo aceptado**: HTTP plano en la LAN (sin dominio no hay TLS) — la cookie
+  de sesión es olfateable en la LAN. Aceptable para una tienda pequeña.
+- **Incidente 2026-09-26 (error propio, ya imposible)**: el deploy decidía si
+  existía la DB con `test -f /var/lib/sabate-pos/pos.db` por SSH como `mirlaac`,
+  que no puede atravesar ese directorio (700 `pos:pos`) — siempre decía «no hay
+  DB» y resembraba, borrando el catálogo. Regla: **nunca decidir nada sobre
+  `/var/lib/sabate-pos` desde un shell de `mirlaac`**; el deploy ahora no toca la
+  DB por defecto (`INIT_DB=1`).
 
 ### Phase 6 — UI responsive (móvil) — DONE (2026-09-26)
 
-Staff use it from a phone as much as from the store PC, so the shell and the
-wide tables had to survive a 375 px viewport. UI is still Spanish, still no
-logic changes.
+El personal lo usa tanto desde el teléfono como desde la PC de la caja, así que el
+shell y las tablas anchas tenían que aguantar 375 px.
 
-- **`app/nav.tsx` rewritten + `app/nav-drawer.tsx` (new)**: one `linksFor()`
-  array is the only source of the role-gated menu (mirrors `OWNER_ONLY` in
-  `middleware.ts`) and is rendered twice — `hidden md:flex` row on desktop,
-  hamburger + native `<dialog>` drawer below `md` (left panel, backdrop, Esc
-  closes, active link via `usePathname`, closes on navigate). User name and
-  sign-out move into the drawer on mobile.
-- **Wide tables**: every `<table>` except `receipt.tsx` (it prints) and the POS
-  ticket now sits in an `overflow-x-auto` wrapper with a per-table `min-w-*`
-  (9 cols → 44rem, 2 cols → 20rem): `inventario`, `inventario/stock-bajo`,
-  `ventas` ×3, `ventas/[id]`, `usuarios`, `tasa`. Native horizontal scroll beat
-  rewriting eight tables as card lists.
-- **`app/pos-screen.tsx`**: the Total/Método/Cobrar block is a single element
-  that is `fixed inset-x-0 bottom-0` on mobile and `lg:static` inside the ticket
-  on desktop (same markup, same state, zero duplication); the search input is
-  `sticky top-0`, the ticket `lg:sticky lg:top-4`, and the root gets
-  `pb-52 lg:pb-0` so the fixed bar never covers the catalog.
-- No new dependencies and no `tailwind.config.*` — Tailwind v4 is CSS-first, so
-  the default `sm:`/`md:`/`lg:` breakpoints just work.
-- Verified in prod (`http://192.168.100.7`): hamburger markup served, tables
-  wrapped, `/inventario`, `/ventas`, `/tasa` all 200.
+- **`app/nav.tsx` + `app/nav-drawer.tsx`**: `linksFor()` es la única fuente del
+  menú por rol (espeja `OWNER_ONLY` del middleware) y se renderiza dos veces —
+  fila `hidden md:flex` y hamburguesa + `<dialog>` debajo de `md`.
+- **Tablas anchas**: cada `<table>` (salvo `receipt.tsx` y el ticket del POS) vive
+  en un `overflow-x-auto` con `min-w-*` por tabla; scroll horizontal nativo en vez
+  de reescribir ocho tablas como tarjetas.
+- **`app/pos-screen.tsx`**: el bloque Total/Método/Cobrar es `fixed` abajo en
+  móvil y `lg:static` dentro del ticket en desktop (mismo markup/estado); buscador
+  `sticky`, ticket `lg:sticky`, `pb-52 lg:pb-0` para que la barra no tape el
+  catálogo.
+- Verificado en producción (`http://192.168.100.7`).
 
-### Próximos pasos — mejorar el sistema de backups (IDEA, sin ejecutar)
+### Phase 7 — Código de producto + tallas — DONE (2026-10-14)
+
+- **DB**: `products.code` (texto libre, opcional, buscable, no único) y tabla
+  `product_sizes` (talla como texto normalizado a mayúsculas, `CHECK quantity >=
+  0`, única por producto); `sale_items.size` y `stock_movements.size`. Un producto
+  sin tallas reales usa una fila «ÚNICA». `products.stock` queda como **caché de
+  `SUM(product_sizes.quantity)`**, recomputado en la misma transacción en cada
+  alta/edición/recepción/ajuste/venta/anulación.
+- **Migración**: `db/client.ts` agrega las columnas y crea `product_sizes` al
+  arrancar (idempotente, se salta durante `next build`) y hace backfill de cada
+  producto existente a «ÚNICA» con su stock.
+- **Lógica**: `lib/product.ts` (alta/edición/reconcile/recepción/ajuste por talla)
+  y `lib/sale.ts` (descuento atómico por talla, anulación repone la talla).
+- **UI**: selector de talla en el POS (con existencias por talla), búsqueda por
+  código, talla en ticket y detalle; inventario con columnas Código/Tallas,
+  editor de tallas en alta/edición y modal de stock por talla; stock-bajo muestra
+  código y desglose.
+- **Tests**: 31 en verde (venta por talla, tope por talla, rollback, anulación
+  repone, `total === suma de tallas`, helpers de producto).
+- **Deploy verificado**: respaldo `pos-2026-10-14.db`; migración aplicada sobre la
+  DB real (3 productos backfilled a «ÚNICA», `integrity_check: ok`), servicio
+  activo, `/login` 200 y bundle nuevo confirmado.
+
+## Pendiente (planificar después)
+
+- **Correcciones de diseño** — por definir con el cliente.
+- **Impresión de la factura** — por definir con el cliente.
+
+## Próximos pasos — mejorar el sistema de backups (IDEA, sin ejecutar)
 
 Hoy el respaldo es: cron 03:00 → `POST /api/admin/backup` → `VACUUM INTO` en
-`/var/lib/sabate-pos/backups/pos-AAAA-MM-DD.db`, retención 30 días. El
-deploy 2026-09-26 dejó ver los huecos (no había copia del día porque la caja
-estaba apagada a las 03:00, y el restore se improvisó a mano). Candidatos, de
-más barato a más pesado:
+`/var/lib/sabate-pos/backups/pos-AAAA-MM-DD.db`, retención 30 días. El deploy
+2026-09-26 dejó ver los huecos (no había copia del día porque la caja estaba
+apagada a las 03:00, y el restore se improvisó a mano). Candidatos, de más barato
+a más pesado:
 
 1. **Respaldo que no se pierda por apagón**: sustituir la línea de
    `/etc/cron.d/sabate-pos` por un *systemd timer* con `Persistent=true`
-   (`OnCalendar=*-*-* 03:00` + `OnBootSec=5min`), así el respaldo del día corre
-   en cuanto arranca la caja aunque se haya perdido la hora. Coste: ~10 líneas
-   en `setup-server.sh`.
-2. **`deploy.sh` con BACKUP_TOKEN obligatorio**: hoy avisa si falta; que falle
-   en seco (`set -e` + mensaje) para que ningún deploy pase sin snapshot previo.
+   (`OnCalendar=*-*-* 03:00` + `OnBootSec=5min`), así el respaldo del día corre en
+   cuanto arranca la caja aunque se haya perdido la hora. Coste: ~10 líneas en
+   `setup-server.sh`.
+2. **`deploy.sh` con BACKUP_TOKEN obligatorio**: hoy avisa si falta; que falle en
+   seco (`set -e` + mensaje) para que ningún deploy pase sin snapshot previo.
 3. **Generaciones con hora y guarda anti-vacío**: snapshots `pos-<día>-<HHMM>`
    antes de cada deploy, y que el respaldo no sobrescriba al del mismo día si la
-   DB a copiar está vacía (0 productos) cuando el anterior no lo estaba — evita
-   que una DB recién sembrada pise el último buen estado.
+   DB a copiar está vacía (0 productos) cuando la anterior no lo estaba.
 4. **Verificación al respaldar**: que la ruta devuelva conteos
-   (productos/ventas/movimientos) y `PRAGMA integrity_check` de la copia, para
-   que un respaldo roto se vea de inmediato y no al restaurar.
-5. **Copia fuera de la caja**: `rsync`/`scp` diario a otro equipo de la LAN (o
-   un USB barato montado en el server) para sobrevivir a la falla del disco o
-   del equipo. Es lo único que cubre pérdida física.
-6. **`scripts/restore.sh`**: congelar lo que hoy se hizo a mano — `stop` →
-   `sudo install -o pos -g pos -m 600 <copia> /var/lib/sabate-pos/pos.db` →
-   `start` (con lista de copias disponibles), y probarlo de vez en cuando. Un
-   respaldo que nunca se restauró es un respaldo que no existe.
+   (productos/ventas/movimientos) y `PRAGMA integrity_check` de la copia.
+5. **Copia fuera de la caja**: `rsync`/`scp` diario a otro equipo de la LAN (o un
+   USB montado en el server) para sobrevivir a la falla del disco o del equipo.
+6. **`scripts/restore.sh`**: `stop` → `sudo install -o pos -g pos -m 600 <copia>
+   /var/lib/sabate-pos/pos.db` → `start` (con lista de copias disponibles), y
+   probarlo de vez en cuando. Un respaldo que nunca se restauró es un respaldo que
+   no existe.
 
 > Recordatorio operativo: `mirlaac` no puede leer `/var/lib/sabate-pos`, así que
-> cualquier copia de la DB se saca con `sudo install` (permitido en sudoers) y
-> la lista de copias solo se obtiene probando nombres.
+> cualquier copia de la DB se saca con `sudo install` (permitido en sudoers) y la
+> lista de copias solo se obtiene probando nombres.

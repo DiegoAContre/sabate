@@ -1,138 +1,46 @@
 # sabate
 
-E-commerce platform for a business in Sabate, Valera, Trujillo State.
+Punto de venta (POS) local para una tienda en Sabate, Valera (Trujillo).
 
-## Tech Stack
+Una sola aplicación, `apps/pos`, **autocontenida**: catálogo y stock propios en
+SQLite, UI en español y API route handlers dentro de la app. Corre en un servidor
+Debian headless de la tienda y el personal lo usa desde Firefox en la LAN.
 
-| Layer       | Technology                       |
-| ----------- | -------------------------------- |
-| Frontend    | Next.js 15 (App Router)          |
-| Styling     | Tailwind CSS                     |
-| Backend     | Express 5 (separate API server) |
-| Database    | PostgreSQL                       |
-| ORM         | Drizzle                          |
-| Auth        | NextAuth.js (Auth.js)            |
-| Payments    | Stripe                           |
-| Images      | AWS S3                           |
-| Hosting     | AWS EC2 (free tier → paid tier)  |
+## Stack
 
-## Architecture
-
-This is a monorepo with four packages:
-
-```
-apps/web       → Next.js frontend (App Router, Tailwind)
-apps/api       → Express 5 REST API
-apps/pos       → local POS system (self-contained: SQLite, own catalog — Spanish UI)
-                 página de venta (pago móvil + referencia, desglose IVA/base imponible),
-                 inventario (vendedor solo lectura), ventas (reporte + anular), tasa del día, usuarios
-packages/db    → Drizzle schema, migrations, shared DB client
-```
-
-Next.js calls the Express API for all data operations — **no API routes or server actions for business logic** in the web app. The POS is the exception: it is fully self-contained (own SQLite DB, API route handlers inside the app) and shares nothing with the e-commerce stack.
+| Capa           | Tecnología                          |
+| -------------- | ----------------------------------- |
+| Frontend       | Next.js 15 (App Router)             |
+| Estilos        | Tailwind CSS 4                      |
+| Base de datos  | SQLite (`node-sqlite3-wasm`)        |
+| ORM            | Drizzle                             |
+| Auth           | JWT con `jose` en cookie httpOnly   |
+| Validación     | Zod                                 |
+| Tests          | Vitest                              |
 
 ## Getting Started
 
 ```bash
-# 1. Install all workspaces
 npm install
-
-# 2. Start the database
-docker compose up db -d
-
-# 3. Copy and fill in the env files from .env.example
-#    At minimum, set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in apps/api/.env
-
-# 4. Apply migrations and seed (admin user + sample categories)
-npm run db:migrate
-npm run seed
-
-# 5. Run both apps (API :3001, web :3000)
-npm run dev
+cp .env.example apps/pos/.env    # completa AUTH_SECRET y SEED_OWNER_*
+npm run seed                     # crea el usuario dueño
+npm run dev                      # http://localhost:3002
 ```
 
-Run commands:
+Comandos:
 
-- `npm run dev` / `npm run dev -w apps/api` / `npm run dev -w apps/web` — run apps
-- `npm run typecheck` — tsc across all workspaces
-- `npm run db:generate` / `db:migrate` / `db:push` / `db:studio` — Drizzle workflow
-- `npm run seed` — seed admin + categories
-- `npm run test` / `npm run test:db-setup` — see Testing below
-
-### Stripe (local dev)
-
-Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in `apps/api/.env`, then forward
-webhooks locally (requires [Stripe CLI](https://docs.stripe.com/stripe-cli)):
-
-```bash
-stripe listen --forward-to localhost:3001/api/webhooks/stripe
-stripe trigger checkout.session.completed   # manual webhook smoke test
-```
-
-### S3 (admin image uploads)
-
-Set the optional `S3_BUCKET` + `AWS_*` vars in `apps/api/.env` to enable admin
-product image uploads.
-
-## Testing
-
-Tests run in `apps/api` (vitest) against a dedicated `sabate_test` database in the
-same docker container — dev data is never touched.
-
-```bash
-npm run test:db-setup   # one-time (idempotent): creates `sabate_test` + pushes schema
-npm run test            # checkout/webhook idempotency, auth, cart
-```
-
-The test env is network-free (Stripe keys blanked) and test files run sequentially
-because they share the database.
-
-`apps/pos` has its own suite (sale transaction: totals, stock decrement, rollback,
-rate guard; payment reference; anulación; report totals and Caracas day grouping;
-IVA/base imponible split with `base + iva === total`) against a throwaway
-`apps/pos/data/pos-test.db`:
-
-```bash
-npm run test:db-setup -w apps/pos   # one-time: creates the test DB + schema
-npm run test:pos                    # = npm run test -w apps/pos
-```
-
-## Environment
-
-Each app has its own env file (see `.env.example` in the repo root):
-
-- `apps/api/.env` — `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `DATABASE_URL`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `STRIPE_SECRET_KEY` (optional), `STRIPE_WEBHOOK_SECRET` (optional), `S3_BUCKET` (optional), `AWS_ACCESS_KEY_ID` (optional), `AWS_SECRET_ACCESS_KEY` (optional), `AWS_REGION` (optional)
-- `apps/web/.env.local` — `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-- `packages/db/.env` — `DATABASE_URL`
-
-## Deploy to AWS
-
-**Free tier setup:**
-- EC2 t2.micro (750 hrs/month for 12 months)
-- RDS PostgreSQL db.t3.micro (free tier)
-- nginx reverse proxy → Express on port 3001, Next.js on port 3000
-- PM2 process manager for both apps
-
-**Roadmap:**
-1. Launch on free tier with single EC2 instance
-2. Migrate to paid tier (larger instances, RDS scaling) as traffic grows
-3. Add CloudFront CDN in front of S3 and the EC2 box, load balancer if needed
+- `npm run dev` — servidor de desarrollo (puerto 3002)
+- `npm run typecheck` — `tsc --noEmit` del workspace
+- `npm run db:push` — aplica el schema Drizzle a la SQLite de desarrollo
+- `npm run seed` — crea el usuario dueño desde `SEED_OWNER_*`
+- `npm run test` — suite del POS (venta/anulación, tallas, tags, reportes)
+- `npm run test:db-setup` — crea `apps/pos/data/pos-test.db` desde el SQL commiteado
 
 ## Features
 
-- Product listing with search, filter, pagination, sort
-- Shopping cart and Stripe checkout
-- User profile management (`/account`: name, password, avatar)
-- Customer order history (`/account/orders`)
-- Admin panel: manage products, categories, users, and orders (status updates)
-- Race-safe inventory (non-negative stock enforced by DB constraint, idempotent checkout webhooks, admin notification on stock shortfalls)
-- Multiple image uploads via AWS S3
-
-### POS local (`apps/pos`)
-
-- Página de venta: búsqueda por **nombre o código**, grilla, selector de **talla**
-  y ticket, **Pago Móvil** y transferencia con número de referencia (opcional), y
-  desglose de **IVA (16 %) / base imponible** antes de cobrar
+- Página de venta: búsqueda por **nombre, código, marca o categoría**, grilla,
+  selector de **talla** y ticket, **Pago Móvil** y transferencia con número de
+  referencia (opcional), y desglose de **IVA (16 %) / base imponible** antes de cobrar
 - Factura / reimpresión con el desglose de IVA, la tasa usada, el método, la
   referencia y la talla
 - **Productos con código (opcional) y tallas**: cada talla tiene su existencia y
@@ -141,6 +49,25 @@ Each app has its own env file (see `.env.example` in the repo root):
 - Inventario con categorías y marcas; el usuario **vendedor** entra en modo solo lectura
 - Ventas: totales por día y por método, filtro por fecha y anular (repone stock)
 - Usuarios, stock bajo y backups diarios; UI escalada al 125 % para legibilidad
+
+## Estructura
+
+Todo vive en `apps/pos` (schema, cliente SQLite, lógica y pantallas). El detalle
+de cada archivo y sus convenciones está en [`AGENTS.md`](./AGENTS.md).
+
+## Deploy
+
+Server Debian 12 headless en la LAN (`192.168.100.7`), systemd, puerto 80.
+
+- `apps/pos/scripts/setup-server.sh` — una sola vez, como root: instala nodejs,
+  crea swap, usuario `pos`, reglas de sudoers, la unidad de systemd, el cron de
+  backups y ufw.
+- `apps/pos/scripts/deploy.sh` — build standalone → tar por SSH → restart → smoke.
+  **Nunca toca la DB** salvo `INIT_DB=1` (resiembre y la borra); pasa
+  `BACKUP_TOKEN` para respaldar antes de subir.
+
+La guía operativa completa (backups, restauración, incidente del 2026-09-26) está
+en `AGENTS.md` y `Nextsteps.md`.
 
 ## License
 
