@@ -6,11 +6,11 @@ export default function ClasificacionPage() {
   return (
     <div>
       <div className="mb-6">
-        <Link href="/inventario" className="text-sm text-gray-500 hover:text-gray-900">
+        <Link href="/inventario" className="text-sm text-slate-500 hover:text-slate-900">
           ← Inventario
         </Link>
         <h1 className="mt-2 text-2xl font-bold">Categorías y marcas</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-slate-600">
           Los productos eligen de estas listas, así los valores no se duplican.
           Ambas son opcionales al crear un producto.
         </p>

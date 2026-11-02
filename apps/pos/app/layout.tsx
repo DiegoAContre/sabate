@@ -4,7 +4,7 @@ import { Nav } from './nav';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Sabate POS',
+  title: 'Sabaté POS',
   description: 'Sistema local de inventario y ventas',
 };
 
@@ -17,9 +17,11 @@ export default async function RootLayout({
 
   return (
     <html lang="es">
-      <body className="min-h-screen bg-white text-gray-900">
+      <body className="min-h-screen bg-slate-50 text-slate-800">
         {session && <Nav session={session} />}
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1600px] px-4 py-6 lg:px-8">
+          {children}
+        </main>
       </body>
     </html>
   );

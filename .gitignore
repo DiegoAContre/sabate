@@ -24,6 +24,7 @@
 *.sln
 *.sw?
 *.env
+/nuevo-diseño
 
 # misc
 .DS_Store

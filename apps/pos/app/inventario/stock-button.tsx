@@ -74,16 +74,16 @@ export function StockButton({
       <button
         type="button"
         onClick={openModal}
-        className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
       >
         Stock
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Movimiento de stock">
-        <p className="mb-3 text-sm text-gray-600">
+        <p className="mb-3 text-sm text-slate-600">
           {product.name} — stock total: <strong>{product.stock}</strong>
         </p>
         {sizes.length > 0 && (
-          <p className="mb-3 text-xs text-gray-500">
+          <p className="mb-3 text-xs text-slate-500">
             {sizes.map((s) => `${s.size}: ${s.quantity}`).join(' · ')}
           </p>
         )}
@@ -113,7 +113,7 @@ export function StockButton({
             <select
               value={size}
               onChange={(e) => pickSize(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2"
+              className="w-full px-3 py-2"
               required
             >
               {sizes.map((s) => (
@@ -133,7 +133,7 @@ export function StockButton({
                 min="1"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full px-3 py-2"
                 required
               />
             </div>
@@ -147,10 +147,10 @@ export function StockButton({
                 min="0"
                 value={newStock}
                 onChange={(e) => setNewStock(e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full px-3 py-2"
                 required
               />
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-slate-400">
                 Delta registrado: {Number(newStock) - current >= 0 ? '+' : ''}
                 {Number(newStock) - current}
               </p>
@@ -158,12 +158,12 @@ export function StockButton({
           )}
           <div>
             <label className="mb-1 block text-sm font-medium">
-              Nota <span className="font-normal text-gray-400">(opcional)</span>
+              Nota <span className="font-normal text-slate-400">(opcional)</span>
             </label>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2"
+              className="w-full px-3 py-2"
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -172,14 +172,14 @@ export function StockButton({
               type="button"
               onClick={() => setOpen(false)}
               disabled={loading}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              className="btn-outline hover:bg-slate-50 disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading || sizes.length === 0}
-              className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+              className="btn-primary hover:bg-brand-dark disabled:opacity-50"
             >
               {loading ? 'Registrando…' : 'Registrar'}
             </button>

@@ -39,42 +39,42 @@ export default async function VentaDetailPage({
         <h1 className="text-2xl font-bold">Venta</h1>
         <Link
           href="/ventas"
-          className="text-sm text-gray-600 underline hover:text-gray-900"
+          className="text-sm text-slate-600 underline hover:text-slate-900"
         >
           Volver al historial
         </Link>
       </div>
 
-      <div className="no-print mb-6 grid gap-3 sm:grid-cols-4">
+      <div className="card no-print mb-6 grid gap-3 p-4 sm:grid-cols-4">
         <div>
-          <p className="text-sm text-gray-600">Fecha</p>
+          <p className="text-sm text-slate-600">Fecha</p>
           <p>{fmt.format(sale.createdAt)}</p>
         </div>
         <div>
-          <p className="text-sm text-gray-600">Vendedor</p>
+          <p className="text-sm text-slate-600">Vendedor</p>
           <p>{row.userName ?? '—'}</p>
         </div>
         <div>
-          <p className="text-sm text-gray-600">Método</p>
+          <p className="text-sm text-slate-600">Método</p>
           <p>{paymentMethodLabel(sale.paymentMethod)}</p>
         </div>
         <div>
-          <p className="text-sm text-gray-600">Tasa usada</p>
+          <p className="text-sm text-slate-600">Tasa usada</p>
           <p>{formatRate(sale.exchangeRate)} Bs/$</p>
         </div>
         {sale.reference && (
           <div>
-            <p className="text-sm text-gray-600">Referencia</p>
+            <p className="text-sm text-slate-600">Referencia</p>
             <p>{sale.reference}</p>
           </div>
         )}
       </div>
 
       <div className="no-print mb-6">
-        <div className="overflow-x-auto">
+        <div className="card overflow-x-auto p-4">
           <table className="w-full min-w-[32rem] text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
+              <tr className="border-b border-slate-200 text-left text-slate-500">
                 <th className="py-2">Producto</th>
                 <th className="py-2">Talla</th>
                 <th className="py-2">Cantidad</th>
@@ -84,13 +84,13 @@ export default async function VentaDetailPage({
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-b border-gray-100">
+                <tr key={item.id} className="border-b border-slate-100">
                   <td className="py-2">
                     {item.category
                       ? `${item.category} - ${item.productName}`
                       : item.productName}
                   </td>
-                  <td className="py-2 text-gray-600">{item.size ?? '—'}</td>
+                  <td className="py-2 text-slate-600">{item.size ?? '—'}</td>
                   <td className="py-2">{item.quantity}</td>
                   <td className="py-2">{formatUsd(item.unitPrice)}</td>
                   <td className="py-2">
@@ -107,7 +107,7 @@ export default async function VentaDetailPage({
       </div>
 
       {sale.voidedAt ? (
-        <div className="no-print mb-6 rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="no-print mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           Anulada el {fmt.format(sale.voidedAt)}. El stock ya fue repuesto.
         </div>
       ) : (
@@ -116,7 +116,7 @@ export default async function VentaDetailPage({
         </div>
       )}
 
-      <div className="rounded border border-gray-200 bg-white p-6">
+      <div className="card p-6">
         <Receipt sale={sale} items={items} />
       </div>
 

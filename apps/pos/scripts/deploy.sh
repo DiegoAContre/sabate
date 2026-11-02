@@ -27,6 +27,8 @@ echo "== build =="
 echo "== static dentro del standalone =="
 rm -rf "$STANDALONE/apps/pos/.next/static"
 cp -r "$APP_DIR/.next/static" "$STANDALONE/apps/pos/.next/static"
+rm -rf "$STANDALONE/apps/pos/public"
+cp -r "$APP_DIR/public" "$STANDALONE/apps/pos/public"
 
 echo "== bundle tar (raiz del standalone: apps/ + node_modules/) =="
 rm -f /tmp/pos-bundle.tgz

@@ -20,15 +20,15 @@ export default async function UsuariosPage() {
         <NewUserButton />
       </div>
 
-      <p className="mb-4 text-sm text-gray-600">
+      <p className="mb-4 text-sm text-slate-600">
         Los vendedores pueden vender y ver el stock bajo. Los usuarios se
         desactivan, nunca se borran, para no perder el historial de ventas.
       </p>
 
-      <div className="overflow-x-auto">
+      <div className="card overflow-x-auto p-4">
         <table className="w-full min-w-[36rem] text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
+            <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2">Usuario</th>
               <th className="py-2">Nombre</th>
               <th className="py-2">Rol</th>
@@ -39,7 +39,7 @@ export default async function UsuariosPage() {
           </thead>
           <tbody>
             {all.map((u) => (
-              <tr key={u.id} className="border-b border-gray-100">
+              <tr key={u.id} className="border-b border-slate-100">
                 <td className="py-2 font-medium">{u.username}</td>
                 <td className="py-2">{u.name}</td>
                 <td className="py-2">
@@ -51,12 +51,12 @@ export default async function UsuariosPage() {
                       activo
                     </span>
                   ) : (
-                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                    <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                       inactivo
                     </span>
                   )}
                 </td>
-                <td className="py-2 text-gray-600">{dateFmt.format(u.createdAt)}</td>
+                <td className="py-2 text-slate-600">{dateFmt.format(u.createdAt)}</td>
                 <td className="py-2">
                   <div className="flex justify-end gap-2">
                     <ResetPasswordButton userId={u.id} username={u.username} />

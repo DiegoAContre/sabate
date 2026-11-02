@@ -50,14 +50,14 @@ export function RateForm() {
           min="0"
           value={rate}
           onChange={(e) => setRate(e.target.value)}
-          className="w-40 rounded border border-gray-300 px-3 py-2"
+          className="w-40 rounded border border-slate-200 px-3 py-2"
           required
         />
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="rounded bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+        className="btn-primary hover:bg-brand-dark disabled:opacity-50"
       >
         {loading ? 'Guardando…' : 'Guardar'}
       </button>

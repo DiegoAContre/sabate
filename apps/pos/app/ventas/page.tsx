@@ -52,26 +52,26 @@ export default async function VentasPage({
       <div className="mb-6 flex flex-wrap items-end gap-3">
         <form className="flex flex-wrap items-end gap-3">
           <label className="text-sm">
-            <span className="mb-1 block text-gray-600">Desde</span>
+            <span className="mb-1 block text-slate-600">Desde</span>
             <input
               type="date"
               name="from"
               defaultValue={from}
-              className="rounded border border-gray-300 px-2 py-1.5"
+              className="rounded border border-slate-200 px-2 py-1.5"
             />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-gray-600">Hasta</span>
+            <span className="mb-1 block text-slate-600">Hasta</span>
             <input
               type="date"
               name="to"
               defaultValue={to}
-              className="rounded border border-gray-300 px-2 py-1.5"
+              className="rounded border border-slate-200 px-2 py-1.5"
             />
           </label>
           <button
             type="submit"
-            className="rounded bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-700"
+            className="btn-primary hover:bg-brand-dark"
           >
             Filtrar
           </button>
@@ -81,7 +81,7 @@ export default async function VentasPage({
           <input type="hidden" name="to" value={today} />
           <button
             type="submit"
-            className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
+            className="btn-outline hover:bg-slate-50"
           >
             Hoy
           </button>
@@ -89,19 +89,19 @@ export default async function VentasPage({
       </div>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Total del período</p>
+        <div className="card p-4">
+          <p className="text-sm text-slate-600">Total del período</p>
           <p className="text-xl font-bold">{formatUsd(summary.totalUsd)}</p>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-600">
             {formatBsCents(summary.totalBs)}
           </p>
         </div>
-        <div className="rounded border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Ventas</p>
+        <div className="card p-4">
+          <p className="text-sm text-slate-600">Ventas</p>
           <p className="text-xl font-bold">{summary.count}</p>
         </div>
-        <div className="rounded border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Anuladas</p>
+        <div className="card p-4">
+          <p className="text-sm text-slate-600">Anuladas</p>
           <p className="text-xl font-bold">{summary.voidedCount}</p>
         </div>
       </div>
@@ -109,10 +109,10 @@ export default async function VentasPage({
       <div className="mb-6 flex flex-col gap-6 sm:flex-row">
         <div className="flex-1">
           <h2 className="mb-2 text-lg font-semibold">Por día</h2>
-          <div className="overflow-x-auto">
+          <div className="card overflow-x-auto p-4">
             <table className="w-full min-w-[20rem] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500">
+                <tr className="border-b border-slate-200 text-left text-slate-500">
                   <th className="py-2">Día</th>
                   <th className="py-2">Ventas</th>
                   <th className="py-2">Total ($)</th>
@@ -121,7 +121,7 @@ export default async function VentasPage({
               </thead>
               <tbody>
                 {summary.byDay.map((d) => (
-                  <tr key={d.day} className="border-b border-gray-100">
+                  <tr key={d.day} className="border-b border-slate-100">
                     <td className="py-2">{d.day}</td>
                     <td className="py-2">{d.count}</td>
                     <td className="py-2">{formatUsd(d.totalUsd)}</td>
@@ -130,7 +130,7 @@ export default async function VentasPage({
                 ))}
                 {summary.byDay.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-gray-500">
+                    <td colSpan={4} className="py-6 text-center text-slate-500">
                       Sin ventas en el período.
                     </td>
                   </tr>
@@ -142,10 +142,10 @@ export default async function VentasPage({
 
         <div className="flex-1">
           <h2 className="mb-2 text-lg font-semibold">Por método de pago</h2>
-          <div className="overflow-x-auto">
+          <div className="card overflow-x-auto p-4">
             <table className="w-full min-w-[20rem] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500">
+                <tr className="border-b border-slate-200 text-left text-slate-500">
                   <th className="py-2">Método</th>
                   <th className="py-2">Ventas</th>
                   <th className="py-2">Total ($)</th>
@@ -154,7 +154,7 @@ export default async function VentasPage({
               </thead>
               <tbody>
                 {summary.byMethod.map((m) => (
-                  <tr key={m.method} className="border-b border-gray-100">
+                  <tr key={m.method} className="border-b border-slate-100">
                     <td className="py-2">
                       {paymentMethodLabel(m.method)}
                     </td>
@@ -165,7 +165,7 @@ export default async function VentasPage({
                 ))}
                 {summary.byMethod.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-gray-500">
+                    <td colSpan={4} className="py-6 text-center text-slate-500">
                       Sin ventas en el período.
                     </td>
                   </tr>
@@ -177,10 +177,10 @@ export default async function VentasPage({
       </div>
 
       <h2 className="mb-2 text-lg font-semibold">Detalle</h2>
-      <div className="overflow-x-auto">
+      <div className="card overflow-x-auto p-4">
         <table className="w-full min-w-[40rem] text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
+            <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2">Fecha</th>
               <th className="py-2">Vendedor</th>
               <th className="py-2">Método</th>
@@ -192,7 +192,7 @@ export default async function VentasPage({
           </thead>
           <tbody>
             {rows.map((s) => (
-              <tr key={s.id} className="border-b border-gray-100">
+              <tr key={s.id} className="border-b border-slate-100">
                 <td className="py-2">{fmt.format(s.createdAt)}</td>
                 <td className="py-2">{s.userName ?? '—'}</td>
                 <td className="py-2">
@@ -214,7 +214,7 @@ export default async function VentasPage({
                 <td className="py-2 text-right">
                   <Link
                     href={`/ventas/${s.id}`}
-                    className="text-gray-600 underline hover:text-gray-900"
+                    className="text-slate-600 underline hover:text-slate-900"
                   >
                     Ver
                   </Link>
@@ -223,7 +223,7 @@ export default async function VentasPage({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-6 text-center text-gray-500">
+                <td colSpan={7} className="py-6 text-center text-slate-500">
                   Sin ventas en el período.
                 </td>
               </tr>

@@ -28,14 +28,14 @@ export default async function StockBajoPage() {
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold">Stock bajo</h1>
-      <p className="mb-6 text-sm text-gray-600">
+      <p className="mb-6 text-sm text-slate-600">
         Productos activos en o por debajo de su umbral de reposición.
       </p>
 
-      <div className="overflow-x-auto">
+      <div className="card overflow-x-auto p-4">
         <table className="w-full min-w-[38rem] text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
+            <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2">Nombre</th>
               <th className="py-2">Código</th>
               <th className="py-2">Precio ($)</th>
@@ -47,23 +47,23 @@ export default async function StockBajoPage() {
           </thead>
           <tbody>
             {low.map((p) => (
-              <tr key={p.id} className="border-b border-gray-100">
+              <tr key={p.id} className="border-b border-slate-100">
                 <td className="py-2 font-medium">{p.name}</td>
-                <td className="py-2 text-gray-600">{p.code ?? '—'}</td>
+                <td className="py-2 text-slate-600">{p.code ?? '—'}</td>
                 <td className="py-2">{formatUsd(p.price)}</td>
                 <td className="py-2">{rate ? formatBs(p.price, rate.bsPerUsd) : '—'}</td>
                 <td className="py-2 font-semibold text-red-600">{p.stock}</td>
-                <td className="py-2 text-gray-600">
+                <td className="py-2 text-slate-600">
                   {(sizesByProduct.get(p.id) ?? [])
                     .map((s) => `${s.size}:${s.quantity}`)
                     .join(' · ') || '—'}
                 </td>
-                <td className="py-2 text-gray-600">{p.lowStockThreshold}</td>
+                <td className="py-2 text-slate-600">{p.lowStockThreshold}</td>
               </tr>
             ))}
             {low.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">
+                <td colSpan={7} className="py-8 text-center text-slate-500">
                   Todo el stock está por encima del umbral.
                 </td>
               </tr>

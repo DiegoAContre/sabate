@@ -42,7 +42,7 @@ export function DeactivateButton({ product }: { product: Product }) {
         className={
           product.isActive
             ? 'rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50'
-            : 'rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100'
+            : 'rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50'
         }
       >
         {product.isActive ? 'Desactivar' : 'Activar'}

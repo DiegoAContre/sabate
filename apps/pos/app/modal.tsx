@@ -40,7 +40,7 @@ export function Modal({
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}
-      className="m-auto rounded-lg p-0 shadow-lg backdrop:bg-black/50"
+      className="m-auto rounded-2xl p-0 shadow-xl backdrop:bg-black/50"
     >
       <div className="w-96 max-w-full p-5">
         <h2 className="mb-4 text-lg font-semibold">{title}</h2>
@@ -73,14 +73,14 @@ export function ConfirmDialog({
 }) {
   return (
     <Modal open={open} onClose={onClose} title={title}>
-      <p className="text-sm text-gray-600">{message}</p>
+      <p className="text-sm text-slate-600">{message}</p>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <div className="mt-4 flex justify-end gap-2">
         <button
           type="button"
           onClick={onClose}
           disabled={loading}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+          className="btn-outline hover:bg-slate-50 disabled:opacity-50"
         >
           Cancelar
         </button>
@@ -91,7 +91,7 @@ export function ConfirmDialog({
           className={
             danger
               ? 'rounded border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50'
-              : 'rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700 disabled:opacity-50'
+              : 'btn-primary hover:bg-brand-dark disabled:opacity-50'
           }
         >
           {loading ? '…' : confirmLabel}

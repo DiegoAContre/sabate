@@ -215,9 +215,26 @@ shell y las tablas anchas tenían que aguantar 375 px.
   categoría y nombre, búsqueda por nombre/código/marca, sin resultados, params
   inválidos → default).
 
-## Pendiente (planificar después)
+### Phase 10 — Rediseño visual «Sabaté POS» — DONE (2026-11-01)
 
-- **Correcciones de diseño** — por definir con el cliente.
+- **Marca del cliente** aplicada al sistema: magenta `#9b1b59` (primario),
+  azul `#6c74a3` (secundario), paleta slate; fuentes del sistema e íconos SVG
+  inline (todo local, sin CDN — el POS trabaja sin internet).
+- **Tokens en `app/globals.css`** (`@theme` + `card`/`btn-primary`/`btn-outline`
+  + base de inputs con focus magenta) y logo `public/logo.jpg` + `app/icon.jpg`
+  (favicon).
+- **Navbar** con logo + «Sabaté POS», links con estado activo (magenta), usuario/
+  avatar/cerrar sesión; drawer móvil re-estilizado. **Login** con tarjeta de marca.
+- **Página de venta** según el mock del cliente: buscador con ícono, grid de
+  tarjetas (nombre + «Marca · Categoría» + precio magenta + chip de stock),
+  ticket lateral redondeado (badge «N ítems», estado vacío, base/IVA/Total,
+  Total Bs, select de método, referencia, «Cobrar» magenta). Toda la lógica se
+  conservó (modal de tallas, referencia, métodos, validaciones).
+- **Resto del sistema** re-skin con los mismos tokens (tablas en tarjetas,
+  botones, badges, alertas ámbar/rojas). El recibo imprimible quedó intacto.
+- **Fix**: el middleware bloqueaba `public/*.jpg` (logo/favicon) — el matcher
+  ahora excluye archivos estáticos. Verificado: typecheck, 32 tests, build,
+  smoke de todas las páginas, assets 200, CSS compilado con los colores de marca.
 
 ## Próximos pasos — mejorar el sistema de backups (IDEA, sin ejecutar)
 

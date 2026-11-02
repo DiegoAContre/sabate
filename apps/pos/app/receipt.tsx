@@ -41,7 +41,7 @@ export function Receipt({
   return (
     <div className="mx-auto w-72 text-sm text-black">
       <p className="text-center text-base font-bold">Sabate</p>
-      <p className="text-center text-xs text-gray-600">
+      <p className="text-center text-xs text-slate-600">
         {dateTime.format(new Date(sale.createdAt))}
       </p>
 
@@ -54,9 +54,9 @@ export function Receipt({
               <td className="py-0.5">
                 {item.category ? `${item.category} - ` : ''}
                 {item.productName}
-                <span className="text-gray-500"> × {item.quantity}</span>
+                <span className="text-slate-500"> × {item.quantity}</span>
                 {item.size && (
-                  <span className="text-gray-500"> · {item.size}</span>
+                  <span className="text-slate-500"> · {item.size}</span>
                 )}
               </td>
               <td className="py-0.5 text-right">
@@ -73,7 +73,7 @@ export function Receipt({
         <span>Total</span>
         <span>{formatUsd(sale.total)}</span>
       </div>
-      <div className="mt-1 space-y-0.5 border-t border-dashed pt-1 text-xs text-gray-600">
+      <div className="mt-1 space-y-0.5 border-t border-dashed pt-1 text-xs text-slate-600">
         <div className="flex justify-between">
           <span>Base imponible</span>
           <span>{formatBsCents(baseBsCents)}</span>
@@ -87,13 +87,13 @@ export function Receipt({
           <span>{formatBsCents(totalBsCents)}</span>
         </div>
       </div>
-      <p className="mt-2 text-xs text-gray-600">
+      <p className="mt-2 text-xs text-slate-600">
         {paymentMethodLabel(sale.paymentMethod)}
       </p>
       {sale.reference && (
-        <p className="text-xs text-gray-600">Referencia: {sale.reference}</p>
+        <p className="text-xs text-slate-600">Referencia: {sale.reference}</p>
       )}
-      <p className="mt-3 text-center text-xs text-gray-500">
+      <p className="mt-3 text-center text-xs text-slate-500">
         Ticket {sale.id.slice(0, 8)}
       </p>
     </div>

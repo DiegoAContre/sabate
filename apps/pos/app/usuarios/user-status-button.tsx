@@ -48,7 +48,7 @@ export function UserStatusButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+        className="btn-outline hover:bg-slate-50"
       >
         {isActive ? 'Desactivar' : 'Activar'}
       </button>

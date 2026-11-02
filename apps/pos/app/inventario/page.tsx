@@ -85,7 +85,7 @@ export default async function InventarioPage({
         href={sortHref(key)}
         className={
           sort === key
-            ? 'font-semibold text-gray-900 hover:underline'
+            ? 'font-semibold text-slate-900 hover:underline'
             : 'hover:underline'
         }
       >
@@ -107,7 +107,7 @@ export default async function InventarioPage({
           <div className="flex items-center gap-2">
             <Link
               href="/inventario/clasificacion"
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+              className="btn-outline hover:bg-slate-50"
             >
               Categorías y marcas
             </Link>
@@ -117,7 +117,7 @@ export default async function InventarioPage({
       </div>
 
       {(!rate || !rate.isValid) && (
-        <div className="mb-4 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mb-4 flex items-start justify-between gap-3 rounded-r-xl border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm">
           {rate ? (
             <>
               La tasa del día venció a las {timeFmt.format(rate.expiresAt)}.{' '}
@@ -140,41 +140,41 @@ export default async function InventarioPage({
           <input type="hidden" name="sort" value={sort} />
           <input type="hidden" name="dir" value={dir} />
           <label className="text-sm">
-            <span className="mb-1 block text-gray-600">Buscar</span>
+            <span className="mb-1 block text-slate-600">Buscar</span>
             <input
               type="search"
               name="q"
               defaultValue={q}
               placeholder="Nombre, código, marca o categoría"
-              className="w-72 rounded border border-gray-300 px-3 py-1.5"
+              className="w-72 px-3 py-1.5"
             />
           </label>
           <button
             type="submit"
-            className="rounded bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-700"
+            className="btn-primary hover:bg-brand-dark"
           >
             Buscar
           </button>
           {q && (
             <Link
               href={`/inventario?sort=${sort}&dir=${dir}`}
-              className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
+              className="btn-outline hover:bg-slate-50"
             >
               Limpiar
             </Link>
           )}
         </form>
         {q && (
-          <p className="pb-2 text-sm text-gray-600">
+          <p className="pb-2 text-sm text-slate-600">
             {rows.length} resultado{rows.length === 1 ? '' : 's'} para «{q}»
           </p>
         )}
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="card overflow-x-auto p-4">
         <table className="w-full min-w-[52rem] text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
+            <tr className="border-b border-slate-200 text-left text-slate-500">
               {header('nombre', 'Nombre')}
               <th className="py-2">Código</th>
               {header('categoria', 'Categoría')}
@@ -192,11 +192,11 @@ export default async function InventarioPage({
             {rows.map(({ product: p, categoryName, brandName }) => {
               const sizes = sizesByProduct.get(p.id) ?? [];
               return (
-                <tr key={p.id} className="border-b border-gray-100">
+                <tr key={p.id} className="border-b border-slate-100">
                   <td className="py-2 font-medium">{p.name}</td>
-                  <td className="py-2 text-gray-600">{p.code ?? '—'}</td>
-                  <td className="py-2 text-gray-600">{categoryName || '—'}</td>
-                  <td className="py-2 text-gray-600">{brandName || '—'}</td>
+                  <td className="py-2 text-slate-600">{p.code ?? '—'}</td>
+                  <td className="py-2 text-slate-600">{categoryName || '—'}</td>
+                  <td className="py-2 text-slate-600">{brandName || '—'}</td>
                   <td className="py-2">{formatUsd(p.price)}</td>
                   <td className="py-2">
                     {rate ? formatBs(p.price, rate.bsPerUsd) : '—'}
@@ -210,21 +210,21 @@ export default async function InventarioPage({
                   >
                     {p.stock}
                   </td>
-                  <td className="py-2 text-gray-600">
+                  <td className="py-2 text-slate-600">
                     {sizes.length === 0
                       ? '—'
                       : sizes
                           .map((s) => `${s.size}:${s.quantity}`)
                           .join(' · ')}
                   </td>
-                  <td className="py-2 text-gray-600">{p.lowStockThreshold}</td>
+                  <td className="py-2 text-slate-600">{p.lowStockThreshold}</td>
                   <td className="py-2">
                     {p.isActive ? (
                       <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
                         activo
                       </span>
                     ) : (
-                      <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                         inactivo
                       </span>
                     )}
@@ -250,7 +250,7 @@ export default async function InventarioPage({
               <tr>
                 <td
                   colSpan={isOwner ? 11 : 10}
-                  className="py-8 text-center text-gray-500"
+                  className="py-8 text-center text-slate-500"
                 >
                   {q
                     ? `Sin resultados para «${q}».`
@@ -265,7 +265,7 @@ export default async function InventarioPage({
       </div>
 
       {rate?.isValid && (
-        <p className="mt-4 text-xs text-gray-400">
+        <p className="mt-4 text-xs text-slate-400">
           Tasa vigente: {formatRate(rate.bsPerUsd)} Bs/$ (vence a las{' '}
           {timeFmt.format(rate.expiresAt)})
         </p>

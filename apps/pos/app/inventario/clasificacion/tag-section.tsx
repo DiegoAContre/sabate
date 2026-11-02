@@ -102,10 +102,10 @@ export function TagSection({
   }
 
   return (
-    <section className="rounded border border-gray-200 bg-white p-4">
+    <section className="card p-4">
       <h2 className="mb-3 text-lg font-semibold">{title}</h2>
 
-      <ul className="mb-4 divide-y divide-gray-100">
+      <ul className="mb-4 divide-y divide-slate-100">
         {items.map((item) => (
           <li key={item.id} className="flex items-center gap-2 py-2">
             <span className="flex-1 text-sm">{item.name}</span>
@@ -116,7 +116,7 @@ export function TagSection({
                 setRenameValue(item.name);
                 setRenameError('');
               }}
-              className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
             >
               Renombrar
             </button>
@@ -133,7 +133,7 @@ export function TagSection({
           </li>
         ))}
         {items.length === 0 && (
-          <li className="py-3 text-sm text-gray-500">Aún no hay ninguna.</li>
+          <li className="py-3 text-sm text-slate-500">Aún no hay ninguna.</li>
         )}
       </ul>
 
@@ -142,13 +142,13 @@ export function TagSection({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 rounded border border-gray-300 px-3 py-1.5 text-sm"
+          className="flex-1 px-3 py-1.5 text-sm"
           required
         />
         <button
           type="submit"
           disabled={adding}
-          className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+          className="btn-primary hover:bg-brand-dark disabled:opacity-50"
         >
           {adding ? '…' : 'Agregar'}
         </button>
@@ -164,7 +164,7 @@ export function TagSection({
           <input
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            className="w-full px-3 py-2 text-sm"
             required
           />
           {renameError && <p className="mt-2 text-sm text-red-600">{renameError}</p>}
@@ -173,14 +173,14 @@ export function TagSection({
               type="button"
               onClick={() => setRenaming(null)}
               disabled={busy}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              className="btn-outline hover:bg-slate-50 disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+              className="btn-primary hover:bg-brand-dark disabled:opacity-50"
             >
               Guardar
             </button>

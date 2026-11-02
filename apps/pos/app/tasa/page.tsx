@@ -27,22 +27,22 @@ export default async function TasaPage() {
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold">Tasa del día</h1>
-      <p className="mb-6 text-sm text-gray-600">
+      <p className="mb-6 text-sm text-slate-600">
         La tasa es válida durante {RATE_VALIDITY_MS / 3600000} horas — el punto de
         venta la necesita vigente para poder vender.
       </p>
 
-      <div className="mb-8 max-w-sm rounded border border-gray-200 p-4">
+      <div className="mb-8 max-w-sm card p-4">
         {rate ? (
           <>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold">{formatRate(rate.bsPerUsd)}</span>
-              <span className="text-gray-500">Bs/$</span>
+              <span className="text-slate-500">Bs/$</span>
             </div>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-slate-600">
               Establecida: {fmt.format(rate.createdAt)}
             </p>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-600">
               Vence: {fmt.format(rate.expiresAt)}
             </p>
             <p
@@ -56,7 +56,7 @@ export default async function TasaPage() {
             </p>
           </>
         ) : (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-600">
             No se ha establecido ninguna tasa todavía.
           </p>
         )}
@@ -65,10 +65,10 @@ export default async function TasaPage() {
       <RateForm />
 
       <h2 className="mb-3 mt-8 text-lg font-semibold">Historial</h2>
-      <div className="overflow-x-auto">
+      <div className="card overflow-x-auto p-4">
         <table className="w-full min-w-[20rem] max-w-md text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
+            <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2">Tasa (Bs/$)</th>
               <th className="py-2">Establecida por</th>
               <th className="py-2">Cuándo</th>
@@ -76,15 +76,15 @@ export default async function TasaPage() {
           </thead>
           <tbody>
             {history.map((r) => (
-              <tr key={r.createdAt.toISOString()} className="border-b border-gray-100">
+              <tr key={r.createdAt.toISOString()} className="border-b border-slate-100">
                 <td className="py-2 font-medium">{formatRate(r.bsPerUsd)}</td>
-                <td className="py-2 text-gray-600">{r.userName ?? '—'}</td>
-                <td className="py-2 text-gray-600">{fmt.format(r.createdAt)}</td>
+                <td className="py-2 text-slate-600">{r.userName ?? '—'}</td>
+                <td className="py-2 text-slate-600">{fmt.format(r.createdAt)}</td>
               </tr>
             ))}
             {history.length === 0 && (
               <tr>
-                <td colSpan={3} className="py-6 text-center text-gray-500">
+                <td colSpan={3} className="py-6 text-center text-slate-500">
                   Sin historial.
                 </td>
               </tr>

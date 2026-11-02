@@ -42,7 +42,9 @@ app/api/sales/[id]/void/  # POST anula una venta (owner): restock + compensating
 app/api/users/         # POST create seller; PATCH [id]: password / isActive (owner)
 app/api/exchange-rate/ # POST the day's Bs/$ rate (owner)
 app/api/admin/backup/  # POST daily VACUUM INTO copy (owner session or BACKUP_TOKEN)
-app/pos-screen.tsx     # client: search (name/code) + grid + per-size picker + ticket + IVA breakdown + reference + Cobrar
+app/nav.tsx            # client: brand navbar (logo, role-based links with active state, avatar + logout); mobile drawer
+app/globals.css        # brand tokens (@theme: magenta/azul + slate) + input base + card/btn-primary/btn-outline
+app/pos-screen.tsx     # client: search (name/code) + product card grid + ticket sidebar + per-size picker + IVA breakdown + reference + Cobrar
 app/receipt.tsx        # printable customer-facing ticket ($ + Bs, base imponible/IVA, método, referencia, talla — no seller, no rate; líneas «Categoría - Nombre»)
 app/inventario/        # product table (search nombre/código/marca/categoría, sortable headers, code + per-size breakdown) + modals: create/edit/stock/deactivate (owner; seller read-only)
 app/inventario/clasificacion/  # categories + brands lists (owner): add, rename, delete
@@ -51,7 +53,7 @@ app/ventas/            # sales list + day/method totals + date filter (owner)
 app/ventas/[id]/       # sale detail: lines («Categoría - Nombre»), receipt reprint, «Anular venta» (owner)
 app/usuarios/          # users: create seller, reset password, activate/deactivate (owner)
 app/tasa/              # daily rate: current + history + set new (owner)
-app/login/             # Spanish login screen
+app/login/             # Spanish login screen (brand card + logo)
 scripts/seed.ts        # creates the owner user from SEED_OWNER_* env (fail-fast)
 scripts/test-db-setup.ts   # builds the throwaway test DB from the committed SQL
 scripts/deploy.sh      # build standalone + tar/ssh + restart + smoke (never touches the DB)
@@ -97,7 +99,11 @@ Reports and filters use the **Caracas day** (`lib/day.ts`, UTC−4, no DST), not
 machine's timezone; Bs totals convert each sale at **its own snapshotted rate**, so
 they match the printed tickets. **Readability**: `app/globals.css` sets
 `html { font-size: 125% }` so the whole rem-based UI scales ~25% without browser
-zoom (breakpoints unaffected — they use the initial root size). Server pages read
+zoom (breakpoints unaffected — they use the initial root size). **Design**: the
+client's brand (magenta `#9b1b59`, azul `#6c74a3`, slate grays; system fonts and
+inline SVGs — the POS runs offline, never use CDN/webfonts) lives in
+`app/globals.css` (`@theme` tokens + `card`/`btn-primary`/`btn-outline`); the
+logo is `public/logo.jpg` (navbar/login) and `app/icon.jpg` (favicon). Server pages read
 the DB directly; client mutations go through zod-validated API route handlers with
 owner checks in the handler (middleware guards pages by role). **Keep server-only
 imports out of client components** — `@/db/client` pulls node-sqlite3-wasm into
@@ -173,7 +179,9 @@ never hard-deleted (sales history).
 
 JWT signed with `jose` (`AUTH_SECRET`, min 32 chars) and stored in an httpOnly
 cookie (30 days). `middleware.ts` gates every page/API: `/login` and
-`/api/auth/*` are public, `/api/admin/backup` is a token bypass, everything else
+`/api/auth/*` are public, `/api/admin/backup` is a token bypass, static images
+(`*.jpg` etc. in `public/`) are excluded from the matcher so the logo/favicon
+load on the login page, everything else
 requires a session, and `/ventas`, `/usuarios`, `/tasa` are owner-only. Mutation
 handlers re-check the role in the handler; page access is also role-guarded.
 

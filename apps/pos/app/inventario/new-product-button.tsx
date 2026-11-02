@@ -101,7 +101,7 @@ export function NewProductButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700"
+        className="btn-primary hover:bg-brand-dark"
       >
         Nuevo producto
       </button>
@@ -113,19 +113,19 @@ export function NewProductButton({
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full px-3 py-2"
                 required
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">
                 Código{' '}
-                <span className="font-normal text-gray-400">(opcional)</span>
+                <span className="font-normal text-slate-400">(opcional)</span>
               </label>
               <input
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full px-3 py-2"
               />
             </div>
           </div>
@@ -133,12 +133,12 @@ export function NewProductButton({
             <div>
               <label className="mb-1 block text-sm font-medium">
                 Categoría{' '}
-                <span className="font-normal text-gray-400">(opcional)</span>
+                <span className="font-normal text-slate-400">(opcional)</span>
               </label>
               <select
                 value={form.categoryId}
                 onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full px-3 py-2"
               >
                 <option value="">Sin categoría</option>
                 {categories.map((c) => (
@@ -150,12 +150,12 @@ export function NewProductButton({
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">
-                Marca <span className="font-normal text-gray-400">(opcional)</span>
+                Marca <span className="font-normal text-slate-400">(opcional)</span>
               </label>
               <select
                 value={form.brandId}
                 onChange={(e) => setForm({ ...form, brandId: e.target.value })}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full px-3 py-2"
               >
                 <option value="">Sin marca</option>
                 {brands.map((b) => (
@@ -175,7 +175,7 @@ export function NewProductButton({
                 min="0"
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full px-3 py-2"
                 required
               />
             </div>
@@ -190,7 +190,7 @@ export function NewProductButton({
                 onChange={(e) =>
                   setForm({ ...form, lowStockThreshold: e.target.value })
                 }
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full px-3 py-2"
               />
             </div>
           </div>
@@ -206,14 +206,14 @@ export function NewProductButton({
                     value={row.size}
                     onChange={(e) => setSizeRow(i, { size: e.target.value })}
                     placeholder="Talla (S, M, 32…)"
-                    className="flex-1 rounded border border-gray-300 px-3 py-2"
+                    className="flex-1 rounded border border-slate-200 px-3 py-2"
                   />
                   <input
                     type="number"
                     min="0"
                     value={row.quantity}
                     onChange={(e) => setSizeRow(i, { quantity: e.target.value })}
-                    className="w-24 rounded border border-gray-300 px-3 py-2"
+                    className="w-24 px-3 py-2"
                   />
                   <button
                     type="button"
@@ -223,7 +223,7 @@ export function NewProductButton({
                       )
                     }
                     disabled={sizes.length === 1}
-                    className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-40"
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
                   >
                     ✕
                   </button>
@@ -233,11 +233,11 @@ export function NewProductButton({
             <button
               type="button"
               onClick={() => setSizes((rows) => [...rows, emptySize()])}
-              className="mt-2 rounded border border-gray-300 px-3 py-1 text-sm text-gray-600 hover:bg-gray-100"
+              className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-50"
             >
               + Agregar talla
             </button>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-slate-400">
               El stock total es la suma de las tallas. Si el producto no tiene
               tallas, usa una sola «ÚNICA».
             </p>
@@ -249,14 +249,14 @@ export function NewProductButton({
               type="button"
               onClick={() => setOpen(false)}
               disabled={loading}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              className="btn-outline hover:bg-slate-50 disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+              className="btn-primary hover:bg-brand-dark disabled:opacity-50"
             >
               {loading ? 'Guardando…' : 'Crear'}
             </button>
